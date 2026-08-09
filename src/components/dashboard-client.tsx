@@ -17,6 +17,8 @@ type UserProfile = {
   isAdmin: boolean;
 };
 
+type LanguageCode = "US" | "UK" | "DK" | "SE" | "NO";
+
 const blockMeta = [
   { key: "A", title: "Highly liquid assets", blurb: "Cash, savings and readily accessible assets" },
   { key: "A2", title: "Short term debt", blurb: "Short term borrowing and credit balance" },
@@ -34,6 +36,100 @@ const blockMeta = [
   { key: "G", title: "Goals", blurb: "Short and long-term ambitions with target values" },
   { key: "I", title: "My notes", blurb: "Personal notes for the planner" },
 ];
+
+const blockTranslations: Record<LanguageCode, Record<string, { headline: string; subtitle: string }>> = {
+  US: {
+    A: { headline: "Highly liquid assets", subtitle: "Cash, savings and readily accessible assets" },
+    A2: { headline: "Short-term debt", subtitle: "Short-term borrowing and credit balance" },
+    B: { headline: "Short-term receivables & locked savings", subtitle: "Certificates of Deposit (CDs), money owed to you by friends/family/business, short-term private loans, pending payouts" },
+    B2: { headline: "Personal debt & current obligations", subtitle: "Personal loans, outstanding medical bills, tax bills due this year, unpaid invoices" },
+    C: { headline: "Longer-term investments", subtitle: "Stock portfolio (ETFs, index funds), brokerage accounts, rental properties, crypto, private equity, angel investments, gold/commodities" },
+    C2: { headline: "Debt linked to long-term assets", subtitle: "Investment property mortgages, investment margin debt, commercial real estate loans" },
+    C3: { headline: "Potential tax liability", subtitle: "Capital gains tax on unrealized stock gains, deferred taxes on property sales, exit taxes" },
+    D: { headline: "Personal home & lifestyle assets", subtitle: "Primary residence valuation, cars/vehicles, jewelry, fine art, boats/RVs, collectibles" },
+    D2: { headline: "Mortgage & personal debt", subtitle: "Primary residence mortgage, auto loans, boat/RV financing, home equity loans (HELOC)" },
+    E: { headline: "Pension & reserves", subtitle: "Pension funds, corporate pensions, state pension estimates, locked funds" },
+    J: { headline: "Salary & income", subtitle: "Monthly net salary, freelance/side-gig income, rental income, dividends, bonuses" },
+    K: { headline: "Monthly expenses", subtitle: "Rent, grocery budget, utilities, subscriptions, insurance, dining out" },
+    G: { headline: "Goals", subtitle: "Short and long-term ambitions with target values" },
+    H: { headline: "My notes", subtitle: "Personal notes for the planner" },
+    I: { headline: "My notes", subtitle: "Personal notes for the planner" },
+  },
+  UK: {
+    A: { headline: "Highly Liquid Assets", subtitle: "Cash, savings and readily accessible assets" },
+    A2: { headline: "Short-Term Debt", subtitle: "Short-term borrowing and credit balance" },
+    B: { headline: "Short-Term Receivables & Locked Savings", subtitle: "Certificates of Deposit (CDs), money owed to you by friends/family/business, short-term private loans, pending payouts" },
+    B2: { headline: "Personal Debt & Current Obligations", subtitle: "Personal loans, outstanding medical bills, tax bills due this year, unpaid invoices" },
+    C: { headline: "Longer-Term Investments", subtitle: "Real estate, stocks and alternative assets" },
+    C2: { headline: "Debt Linked to Long-Term Assets", subtitle: "Long-term debt obligations" },
+    C3: { headline: "Potential Tax Liability", subtitle: "Tax linked to long-term investments" },
+    D: { headline: "Personal Home & Lifestyle Assets", subtitle: "Private home and personal assets" },
+    D2: { headline: "Mortgage & Personal Debt", subtitle: "Mortgage and debt linked to personal assets" },
+    E: { headline: "Pension & Reserves", subtitle: "Retirement and precautionary reserves" },
+    J: { headline: "Salary & Income", subtitle: "Monthly salary or income" },
+    K: { headline: "Monthly Expenses", subtitle: "Regular household expenses" },
+    G: { headline: "Goals", subtitle: "Short and long-term ambitions with target values" },
+    H: { headline: "My notes", subtitle: "Personal notes for the planner" },
+    I: { headline: "My notes", subtitle: "Personal notes for the planner" },
+  },
+  DK: {
+    A: { headline: "Likvide midler", subtitle: "Kontanter, opsparing og lettilgængelige midler" },
+    A2: { headline: "Kortfristet gæld", subtitle: "Kortfristede lån og kreditbalance" },
+    B: { headline: "Tilgodehavender & kortfristet bundne midler", subtitle: "Mindre likvide aktiver og tilgodehavender" },
+    B2: { headline: "Personlig gæld & løbende forpligtelser", subtitle: "Personlig gæld og kortfristede forpligtelser" },
+    C: { headline: "Langsigtede investeringer", subtitle: "Investeringsejendomme, aktier og alternative aktiver" },
+    C2: { headline: "Gæld knyttet til langsigtede investeringer", subtitle: "Langsigtede gældsforpligtelser" },
+    C3: { headline: "Forventet skatteforpligtelse", subtitle: "Skat knyttet til langsigtede investeringer" },
+    D: { headline: "Helårsbolig & livsstilsaktiver", subtitle: "Egen bolig og personlige aktiver" },
+    D2: { headline: "Realkredit- & forbrugsgæld", subtitle: "Realkreditlån og gæld knyttet til personlige aktiver" },
+    E: { headline: "Pension & reserver", subtitle: "Pensionsopsparing og forsigtighedsreserver" },
+    J: { headline: "Løn & indkomst", subtitle: "Månedlig løn eller indtægt" },
+    K: { headline: "Månedlige udgifter", subtitle: "Faste og variable husholdningsudgifter" },
+    G: { headline: "Mål", subtitle: "Kort- og langsigtede ambitioner med målværdier" },
+    H: { headline: "Mine noter", subtitle: "Personlige noter til planlæggeren" },
+    I: { headline: "Mine noter", subtitle: "Personlige noter til planlæggeren" },
+  },
+  SE: {
+    A: { headline: "Likvida medel", subtitle: "Kontanter, sparande och lättillgängliga tillgångar" },
+    A2: { headline: "Kortfristiga skulder", subtitle: "Kortfristade lån och kreditbalanser" },
+    B: { headline: "Kortfristiga fordringar & låst sparande", subtitle: "Mindre likvida tillgångar och fordringar" },
+    B2: { headline: "Privatskulder & löpande förpliktelser", subtitle: "Personliga skulder och kortfristiga förpliktelser" },
+    C: { headline: "Långsiktiga investeringar", subtitle: "Investeringsfastigheter, aktier och alternativa tillgångar" },
+    C2: { headline: "Skulder kopplade till långsiktiga tillgångar", subtitle: "Långsiktiga skuldförpliktelser" },
+    C3: { headline: "Potentiell skatteskuld", subtitle: "Skatt kopplad till långsiktiga investeringar" },
+    D: { headline: "Bostad & livsstilstillgångar", subtitle: "Egen bostad och personliga tillgångar" },
+    D2: { headline: "Bolån & privata fordringsskulder", subtitle: "Bolån och skulder kopplade till personliga tillgångar" },
+    E: { headline: "Pension & reserver", subtitle: "Pensionssparande och trygghetsreserver" },
+    J: { headline: "Lön & inkomster", subtitle: "Månatlig lön eller inkomst" },
+    K: { headline: "Månadskostnader", subtitle: "Fasta och rörliga hushållskostnader" },
+    G: { headline: "Mål", subtitle: "Kortsiktiga och långsiktiga ambitioner med målbelopp" },
+    H: { headline: "Mina anteckningar", subtitle: "Personliga anteckningar för planen" },
+    I: { headline: "Mina anteckningar", subtitle: "Personliga anteckningar för planen" },
+  },
+  NO: {
+    A: { headline: "Likvide midler", subtitle: "Kontanter, sparing og lett tilgjengelige midler" },
+    A2: { headline: "Kortsiktig gjeld", subtitle: "Kortsiktige lån og kredittbalanser" },
+    B: { headline: "Kortsiktige fordringer & bundet sparing", subtitle: "Mindre likvide eiendeler og fordringer" },
+    B2: { headline: "Personlig gjeld & løpende forpliktelser", subtitle: "Personlig gjeld og kortsiktige forpliktelser" },
+    C: { headline: "Langsiktige investeringer", subtitle: "Investeringseiendom, aksjer og alternative eiendeler" },
+    C2: { headline: "Gjeld knyttet til langsiktige eiendeler", subtitle: "Langsiktige gjeldsforpliktelser" },
+    C3: { headline: "Forventet skatteforpliktelse", subtitle: "Skatt knyttet til langsiktige eiendeler" },
+    D: { headline: "Primærbolig & livsstilseiendeler", subtitle: "Egen bolig og personlige eiendeler" },
+    D2: { headline: "Boliglån & personlig gjeld", subtitle: "Boliglån og gjeld knyttet til personlige eiendeler" },
+    E: { headline: "Pensjon & reserver", subtitle: "Pensjonssparing og trygghetsreserver" },
+    J: { headline: "Lønn & inntekt", subtitle: "Månedlig lønn eller inntekt" },
+    K: { headline: "Månedlige utgifter", subtitle: "Faste og variable husholdningsutgifter" },
+    G: { headline: "Mål", subtitle: "Kort- og langsiktige ambisjoner med målverdier" },
+    H: { headline: "Mine notater", subtitle: "Personlige notater for planleggeren" },
+    I: { headline: "Mine notater", subtitle: "Personlige notater for planleggeren" },
+  },
+};
+
+function getBlockCopy(key: string, language: LanguageCode) {
+  const fallback = blockMeta.find((meta) => meta.key === key) ?? blockMeta[0];
+  const translation = blockTranslations[language][key];
+  return { title: translation?.headline ?? fallback.title, blurb: translation?.subtitle ?? fallback.blurb };
+}
 
 function sanitizeNumericInput(value: string) {
   return value.replace(/[^0-9-]/g, "").slice(0, 9);
@@ -70,7 +166,9 @@ export function DashboardClient() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [plannerMode, setPlannerMode] = useState<"wealth" | "pension">("wealth");
+  const [language, setLanguage] = useState<LanguageCode>("US");
+  const [showWealthPlanner, setShowWealthPlanner] = useState(true);
+  const [showPensionPlanner, setShowPensionPlanner] = useState(true);
   const [birthYear, setBirthYear] = useState(1980);
   const [retirementAge, setRetirementAge] = useState(67);
   const [pensionYield, setPensionYield] = useState(5);
@@ -111,29 +209,34 @@ export function DashboardClient() {
     };
   }, [eValue]);
 
+  const translatedBlockMeta = useMemo(() => blockMeta.map((meta) => ({ ...meta, ...getBlockCopy(meta.key, language) })), [language]);
+
   const wealthBoxOverview = useMemo(() => {
     const items = [
-      { key: "A", label: "A. Highly liquid assets", value: blocks.A?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-      { key: "A2", label: "A2. Short term debt", value: blocks.A2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "B", label: "B. Less liquid assets", value: blocks.B?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-      { key: "B2", label: "B2. Short term debt", value: blocks.B2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "C", label: "C. Longer term investments", value: blocks.C?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-      { key: "C2", label: "C2. Debt linked to long-term assets", value: blocks.C2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "H", label: "H. My notes", value: blocks.H?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#94a3b8" },
-      { key: "C3", label: "C3. Potential tax liability", value: blocks.C3?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "D", label: "D. Personal home and lifestyle assets", value: blocks.D?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-      { key: "D2", label: "D2. Mortgage and personal debt", value: blocks.D2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "E", label: "E. Pension and reserves", value: blocks.E?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-    ];
+      { key: "A", value: blocks.A?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
+      { key: "A2", value: blocks.A2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
+      { key: "B", value: blocks.B?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
+      { key: "B2", value: blocks.B2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
+      { key: "C", value: blocks.C?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
+      { key: "C2", value: blocks.C2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
+      { key: "C3", value: blocks.C3?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
+      { key: "D", value: blocks.D?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
+      { key: "D2", value: blocks.D2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
+      { key: "E", value: blocks.E?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
+    ].filter(({ key }) => key !== "H");
     const maxValue = Math.max(...items.map((item) => item.value), 1);
-    return items.map((item) => ({ ...item, width: Math.max(8, Math.round((item.value / maxValue) * 100)) }));
-  }, [blocks]);
+    return items.map((item) => ({
+      ...item,
+      label: `${item.key}. ${translatedBlockMeta.find((meta) => meta.key === item.key)?.title ?? item.key}`,
+      width: Math.max(8, Math.round((item.value / maxValue) * 100)),
+    }));
+  }, [blocks, translatedBlockMeta]);
 
-  const row1 = blockMeta.filter(({ key }) => ["A", "A2", "B", "B2", "C", "C2", "H", "C3"].includes(key));
-  const row2 = blockMeta.filter(({ key }) => ["D", "D2"].includes(key));
-  const row3 = blockMeta.filter(({ key }) => ["E"].includes(key));
-  const row4 = blockMeta.filter(({ key }) => ["J", "K"].includes(key));
-  const row5 = blockMeta.filter(({ key }) => ["G", "I"].includes(key));
+  const row1 = translatedBlockMeta.filter(({ key }) => ["A", "A2", "B", "B2", "C", "C2", "H", "C3"].includes(key));
+  const row2 = translatedBlockMeta.filter(({ key }) => ["D", "D2"].includes(key));
+  const row3 = translatedBlockMeta.filter(({ key }) => ["E"].includes(key));
+  const row4 = translatedBlockMeta.filter(({ key }) => ["J", "K"].includes(key));
+  const row5 = translatedBlockMeta.filter(({ key }) => ["G", "I"].includes(key));
 
   const updateRow = (blockKey: string, rowId: string, field: keyof Row, value: string) => {
     setBlocks((current) => ({
@@ -319,43 +422,55 @@ export function DashboardClient() {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">Planning view</p>
-                <h2 className="text-lg font-semibold text-slate-900">{plannerMode === "wealth" ? "Wealth overview" : "Pension outlook"}</h2>
+          {showWealthPlanner && (
+            <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Planning view</p>
+                  <h2 className="text-lg font-semibold text-slate-900">Wealth overview</h2>
+                </div>
+                <div className="text-sm text-slate-500">Brief overview</div>
               </div>
-              <div className="text-sm text-slate-500">Brief overview</div>
-            </div>
-            <div className="mt-6 space-y-3">
-              {wealthBoxOverview.map((item) => (
-                <div key={item.key} className="flex items-center gap-3">
-                  <div className="h-10 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
-                      <span className="truncate font-medium">{item.label}</span>
-                      <span className="font-semibold text-slate-900">{user ? toCurrency(item.value, user.currency) : "—"}</span>
-                    </div>
-                    <div className="mt-2 h-2 rounded-full bg-slate-100">
-                      <div className="h-2 rounded-full" style={{ width: `${item.width}%`, backgroundColor: item.color }} />
+              <div className="mt-6 space-y-3">
+                {wealthBoxOverview.map((item) => (
+                  <div key={item.key} className="flex items-center gap-3">
+                    <div className="h-10 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+                        <span className="truncate font-medium">{item.label}</span>
+                        <span className="font-semibold text-slate-900">{user ? toCurrency(item.value, user.currency) : "—"}</span>
+                      </div>
+                      <div className="mt-2 h-2 rounded-full bg-slate-100">
+                        <div className="h-2 rounded-full" style={{ width: `${item.width}%`, backgroundColor: item.color }} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-slate-500">Planning focus</p>
             <p className="mt-2 text-lg font-semibold text-slate-900">Tailor the outlook to your life stage</p>
             <p className="mt-2 text-sm leading-6 text-slate-600">These assumptions help the planner reflect your personal retirement trajectory.</p>
             <div className="mt-4 flex flex-wrap gap-2">
-              <button className={`rounded-full px-4 py-2 text-sm font-medium ${plannerMode === "wealth" ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`} onClick={() => setPlannerMode("wealth")}>
+              <button className={`rounded-full px-4 py-2 text-sm font-medium ${showWealthPlanner ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`} onClick={() => setShowWealthPlanner((value) => !value)}>
                 Wealth Planner
               </button>
-              <button className={`rounded-full px-4 py-2 text-sm font-medium ${plannerMode === "pension" ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`} onClick={() => setPlannerMode("pension")}>
+              <button className={`rounded-full px-4 py-2 text-sm font-medium ${showPensionPlanner ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`} onClick={() => setShowPensionPlanner((value) => !value)}>
                 Pension Planner
               </button>
+            </div>
+            <div className="mt-4 rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+              <span className="mb-2 block font-medium">Wealth block language</span>
+              <select className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" value={language} onChange={(event) => setLanguage(event.target.value as LanguageCode)}>
+                <option value="US">US</option>
+                <option value="UK">UK</option>
+                <option value="DK">DK</option>
+                <option value="SE">SE</option>
+                <option value="NO">NO</option>
+              </select>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
@@ -489,87 +604,91 @@ export function DashboardClient() {
                 <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={user?.currency ?? "kr"} />
               ))}
             </div>
-            <div className="grid gap-4 xl:grid-cols-2">
-              <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">Retirement table</p>
-                    <h2 className="text-lg font-semibold text-slate-900">Pension projection</h2>
+            <div className={`grid gap-4 ${showWealthPlanner && showPensionPlanner ? "xl:grid-cols-2" : ""}`}>
+              {showPensionPlanner && (
+                <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-500">Retirement table</p>
+                      <h2 className="text-lg font-semibold text-slate-900">Pension projection</h2>
+                    </div>
+                    <div className="text-sm text-slate-500">Editable forecast</div>
                   </div>
-                  <div className="text-sm text-slate-500">Editable forecast</div>
-                </div>
-                <div className="mt-5 overflow-x-auto">
-                  <table className="min-w-full text-left text-sm text-slate-700">
-                    <thead>
-                      <tr>
-                        <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
-                        <th className="border-b border-slate-200 pb-3 font-medium">Pension and reserves</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {retirementProjections.map((projection) => (
-                        <tr key={projection.year} className="border-b border-slate-200 last:border-none">
-                          <td className="py-3 pr-4 font-medium text-slate-900">{projection.year}</td>
-                          <td className="py-3">
-                            <input
-                              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
-                              type="number"
-                              value={projection.value}
-                              onChange={(event) =>
-                                setProjectionOverrides((current) => ({
-                                  ...current,
-                                  [projection.year]: Number(event.target.value || 0),
-                                }))
-                              }
-                            />
-                          </td>
+                  <div className="mt-5 overflow-x-auto">
+                    <table className="min-w-full text-left text-sm text-slate-700">
+                      <thead>
+                        <tr>
+                          <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
+                          <th className="border-b border-slate-200 pb-3 font-medium">Pension and reserves</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {retirementProjections.map((projection) => (
+                          <tr key={projection.year} className="border-b border-slate-200 last:border-none">
+                            <td className="py-3 pr-4 font-medium text-slate-900">{projection.year}</td>
+                            <td className="py-3">
+                              <input
+                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                                type="number"
+                                value={projection.value}
+                                onChange={(event) =>
+                                  setProjectionOverrides((current) => ({
+                                    ...current,
+                                    [projection.year]: Number(event.target.value || 0),
+                                  }))
+                                }
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">Asset projection</p>
-                    <h2 className="text-lg font-semibold text-slate-900">Assets and investments</h2>
+              {showWealthPlanner && (
+                <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-500">Asset projection</p>
+                      <h2 className="text-lg font-semibold text-slate-900">Assets and investments</h2>
+                    </div>
+                    <div className="text-sm text-slate-500">Editable forecast</div>
                   </div>
-                  <div className="text-sm text-slate-500">Editable forecast</div>
-                </div>
-                <div className="mt-5 overflow-x-auto">
-                  <table className="min-w-full text-left text-sm text-slate-700">
-                    <thead>
-                      <tr>
-                        <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
-                        <th className="border-b border-slate-200 pb-3 font-medium">Assets and investments</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {assetProjections.map((projection) => (
-                        <tr key={projection.year} className="border-b border-slate-200 last:border-none">
-                          <td className="py-3 pr-4 font-medium text-slate-900">{projection.year}</td>
-                          <td className="py-3">
-                            <input
-                              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
-                              type="number"
-                              value={projection.value}
-                              onChange={(event) => {
-                                const nextValue = Number(event.target.value || 0);
-                                setAssetProjectionOverrides((current) => ({
-                                  ...current,
-                                  [projection.year]: nextValue,
-                                }));
-                              }}
-                            />
-                          </td>
+                  <div className="mt-5 overflow-x-auto">
+                    <table className="min-w-full text-left text-sm text-slate-700">
+                      <thead>
+                        <tr>
+                          <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
+                          <th className="border-b border-slate-200 pb-3 font-medium">Assets and investments</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {assetProjections.map((projection) => (
+                          <tr key={projection.year} className="border-b border-slate-200 last:border-none">
+                            <td className="py-3 pr-4 font-medium text-slate-900">{projection.year}</td>
+                            <td className="py-3">
+                              <input
+                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                                type="number"
+                                value={projection.value}
+                                onChange={(event) => {
+                                  const nextValue = Number(event.target.value || 0);
+                                  setAssetProjectionOverrides((current) => ({
+                                    ...current,
+                                    [projection.year]: nextValue,
+                                  }));
+                                }}
+                              />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </section>
@@ -590,7 +709,7 @@ type BlockCardProps = {
 function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, currency }: BlockCardProps) {
   const rows = blocks[meta.key] ?? [];
   const isGoalBlock = meta.key === "G";
-  const isLiabilityBlock = ["A2", "B2", "C2", "C3", "D2", "K"].includes(meta.key);
+  const isLiabilityBlock = ["A2", "B2", "C2", "C3", "D2"].includes(meta.key);
   const isIncomeBlock = meta.key === "J";
   const isExpenseBlock = meta.key === "K";
   const isNoteBlock = ["H", "I"].includes(meta.key);
