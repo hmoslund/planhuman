@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { calculateWealth, toCurrency } from "@/lib/wealth";
+import * as am5 from "@amcharts/amcharts5";
+import * as am5xy from "@amcharts/amcharts5/xy";
+import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
+import { curveMonotoneX } from "d3-shape";
+import { calculateWealth, getCurrency, toCurrency } from "@/lib/wealth";
 
 type Row = { id: string; identifier: string; value: number; detail: string };
 type Blocks = Record<string, Row[]>;
@@ -17,7 +21,7 @@ type UserProfile = {
   isAdmin: boolean;
 };
 
-type LanguageCode = "US" | "UK" | "DK" | "SE" | "NO";
+type CountryCode = "US" | "UK" | "DK" | "SE" | "NO" | "FI";
 
 const blockMeta = [
   { key: "A", title: "Highly liquid assets", blurb: "Cash, savings and readily accessible assets" },
@@ -37,7 +41,7 @@ const blockMeta = [
   { key: "I", title: "My notes", blurb: "Personal notes for the planner" },
 ];
 
-const blockTranslations: Record<LanguageCode, Record<string, { headline: string; subtitle: string }>> = {
+const blockTranslations: Record<CountryCode, Record<string, { headline: string; subtitle: string }>> = {
   US: {
     A: { headline: "Highly liquid assets", subtitle: "Cash, savings and readily accessible assets" },
     A2: { headline: "Short-term debt", subtitle: "Short-term borrowing and credit balance" },
@@ -123,9 +127,26 @@ const blockTranslations: Record<LanguageCode, Record<string, { headline: string;
     H: { headline: "Mine notater", subtitle: "Personlige notater for planleggeren" },
     I: { headline: "Mine notater", subtitle: "Personlige notater for planleggeren" },
   },
+  FI: {
+    A: { headline: "Likvidit varat", subtitle: "Käteinen, säästöt ja helposti käytettävät varat" },
+    A2: { headline: "Lyhytaikainen velka", subtitle: "Lyhytaikaiset lainat ja luottotilit" },
+    B: { headline: "Lyhytaikaiset saamiset & sidottu säästö", subtitle: "Talletukset, saatavat ja lyhytaikaiset yksityislainat" },
+    B2: { headline: "Henkilökohtainen velka & juoksevat velvoitteet", subtitle: "Henkilökohtaiset lainat ja laskut ennen eräpäivää" },
+    C: { headline: "Pitkäaikaiset sijoitukset", subtitle: "Osakesalkut, vuokra-asunnot ja vaihtoehtoiset sijoitukset" },
+    C2: { headline: "Velka pitkän aikavälin varoihin", subtitle: "Asuntolainat, sijoituslainat ja muut pitkäaikaiset velat" },
+    C3: { headline: "Mahdollinen verovelka", subtitle: "Sarakkaista myyntivoitoista syntyvät verovelat" },
+    D: { headline: "Asuin- ja elämäntapayksiköt", subtitle: "Asuinrakennukset, autot, korut ja muut henkilökohtaiset varat" },
+    D2: { headline: "Asuntolaina & henkilökohtainen velka", subtitle: "Asuntolainat, autolainat ja henkilökohtaiset velat" },
+    E: { headline: "Eläke & varaukset", subtitle: "Eläkkeet, säästöt ja turvavaraukset" },
+    J: { headline: "Palkka & tulot", subtitle: "Kuukausipalkka, lisätulot ja sijoitustuotot" },
+    K: { headline: "Kuukausimenot", subtitle: "Vuokra, ruoka, laskut, vakuutukset ja vapaa-aika" },
+    G: { headline: "Tavoitteet", subtitle: "Lyhyen ja pitkän aikavälin tavoitteet ja summat" },
+    H: { headline: "Muistiinpanot", subtitle: "Henkilökohtaiset muistiinpanot suunnittelijalle" },
+    I: { headline: "Muistiinpanot", subtitle: "Henkilökohtaiset muistiinpanot suunnittelijalle" },
+  },
 };
 
-function getBlockCopy(key: string, language: LanguageCode) {
+function getBlockCopy(key: string, language: CountryCode) {
   const fallback = blockMeta.find((meta) => meta.key === key) ?? blockMeta[0];
   const translation = blockTranslations[language][key];
   return { title: translation?.headline ?? fallback.title, blurb: translation?.subtitle ?? fallback.blurb };
@@ -166,7 +187,7 @@ export function DashboardClient() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [language, setLanguage] = useState<LanguageCode>("US");
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>("US");
   const [showWealthPlanner, setShowWealthPlanner] = useState(true);
   const [showPensionPlanner, setShowPensionPlanner] = useState(true);
   const [birthYear, setBirthYear] = useState(1980);
@@ -178,6 +199,11 @@ export function DashboardClient() {
   const [pensionTaxRate, setPensionTaxRate] = useState(25);
   const [projectionOverrides, setProjectionOverrides] = useState<Record<number, number>>({});
   const [assetProjectionOverrides, setAssetProjectionOverrides] = useState<Record<number, number>>({});
+  const [smoothingHorizontal, setSmoothingHorizontal] = useState(0.5);
+  const [smoothingVertical, setSmoothingVertical] = useState(0.5);
+  const [strokeWidth, setStrokeWidth] = useState(3);
+  const retirementChartRef = useRef<HTMLDivElement | null>(null);
+  const assetChartRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -199,17 +225,20 @@ export function DashboardClient() {
   const topGoals = useMemo(() => (blocks.G ?? []).slice(0, 5), [blocks]);
 
   const eValue = useMemo(() => (blocks.E ?? []).reduce((total, row) => total + Number(row.value || 0), 0), [blocks.E]);
+  const cValue = useMemo(() => (blocks.C ?? []).reduce((total, row) => total + Number(row.value || 0), 0), [blocks.C]);
 
-  const trendData = useMemo(() => {
-    return {
-      years: Array.from({ length: 10 }, (_, index) => ({
-        label: index === 0 ? "Current" : index === 9 ? "Age 82" : `Y${index}`,
-        value: eValue * (1 + index * 0.04),
-      })),
-    };
-  }, [eValue]);
+  const currency = useMemo(() => getCurrency(selectedCountry), [selectedCountry]);
 
-  const translatedBlockMeta = useMemo(() => blockMeta.map((meta) => ({ ...meta, ...getBlockCopy(meta.key, language) })), [language]);
+  useEffect(() => {
+    if (user && ["US", "UK", "DK", "SE", "NO", "FI"].includes(user.country) && user.country !== selectedCountry) {
+      setSelectedCountry(user.country as CountryCode);
+    }
+  }, [user, selectedCountry]);
+
+  const translatedBlockMeta = useMemo(
+    () => blockMeta.map((meta) => ({ ...meta, ...getBlockCopy(meta.key, selectedCountry) })),
+    [selectedCountry]
+  );
 
   const wealthBoxOverview = useMemo(() => {
     const items = [
@@ -236,7 +265,7 @@ export function DashboardClient() {
   const row2 = translatedBlockMeta.filter(({ key }) => ["D", "D2"].includes(key));
   const row3 = translatedBlockMeta.filter(({ key }) => ["E"].includes(key));
   const row4 = translatedBlockMeta.filter(({ key }) => ["J", "K"].includes(key));
-  const row5 = translatedBlockMeta.filter(({ key }) => ["G", "I"].includes(key));
+  const row5 = translatedBlockMeta.filter(({ key }) => ["G"].includes(key));
 
   const updateRow = (blockKey: string, rowId: string, field: keyof Row, value: string) => {
     setBlocks((current) => ({
@@ -258,55 +287,156 @@ export function DashboardClient() {
 
   const retirementProjections = useMemo(() => {
     const startYear = 2027;
-    const endYear = birthYear + 82;
+    const endYear = retirementYear;
     const years = Array.from({ length: Math.max(endYear - startYear + 1, 0) }, (_, idx) => startYear + idx);
-    const projections: Array<{ year: number; value: number }> = [];
-    let currentValue = eValue;
+    const projections: Array<{ year: number; balance: number; returns: number; savings: number; spend: number }> = [];
+    let runningBalance = eValue;
+    let previousSpend = 0;
 
-    years.forEach((year, index) => {
-      if (index === 0) {
-        currentValue = eValue;
-      } else {
-        const growthValue = currentValue * (1 + pensionYield / 100);
-        if (year <= retirementYear) {
-          currentValue = growthValue + yearlyPensionSavings;
-        } else {
-          currentValue = growthValue - yearlyExpenses;
-        }
+    years.forEach((year) => {
+      // Column C: estimated returns = pension balance x average yield % pension funds
+      const returns = runningBalance * (pensionYield / 100);
+      // Column D: yearly pension savings to retirement (shown until birth year + retirement age)
+      const savings = year <= retirementYear ? yearlyPensionSavings : 0;
+
+      // Column E: yearly spend after inflation (0 until retirement, then inflation-adjusted each year)
+      let spend = 0;
+      if (year === retirementYear) {
+        spend = yearlyExpenses * (1 + inflationRate / 100);
+      } else if (year > retirementYear) {
+        spend = previousSpend * (1 + inflationRate / 100);
       }
+      previousSpend = spend;
 
       const override = projectionOverrides[year];
-      projections.push({ year, value: typeof override === "number" ? override : Math.round(currentValue) });
+      projections.push({
+        year,
+        balance: typeof override === "number" ? Math.round(override) : Math.round(runningBalance),
+        returns: Math.round(returns),
+        savings: Math.round(savings),
+        spend: Math.round(spend),
+      });
+
+      // Column B: until retirement balance grows by returns + savings, from retirement by returns - spend
+      if (year < retirementYear) {
+        runningBalance = runningBalance + returns + savings;
+      } else {
+        runningBalance = runningBalance + returns - spend;
+      }
     });
 
     return projections;
-  }, [birthYear, eValue, pensionYield, yearlyExpenses, retirementYear, yearlyPensionSavings, projectionOverrides]);
+  }, [birthYear, eValue, pensionYield, yearlyExpenses, yearlyPensionSavings, retirementYear, inflationRate, projectionOverrides]);
 
   const assetProjections = useMemo(() => {
     const startYear = 2027;
-    const endYear = birthYear + 82;
+    const endYear = retirementYear;
     const years = Array.from({ length: Math.max(endYear - startYear + 1, 0) }, (_, idx) => startYear + idx);
-    const projections: Array<{ year: number; value: number }> = [];
-    let currentValue = summary.assets;
+    const yearlyCashflow = summary.cashflow * 12;
+    const projections: Array<{ year: number; balance: number; returns: number; cashflow: number }> = [];
+    let runningBalance = cValue;
 
-    years.forEach((year, index) => {
-      if (index === 0) {
-        currentValue = summary.assets;
-      } else {
-        const growthValue = currentValue * (1 + illiquidYield / 100);
-        if (year <= retirementYear) {
-          currentValue = growthValue + yearlyPensionSavings;
-        } else {
-          currentValue = growthValue - yearlyExpenses;
-        }
-      }
+    years.forEach((year) => {
+      // Column C: estimated returns = assets/investments x average yield % less liquid assets
+      const returns = runningBalance * (illiquidYield / 100);
 
       const override = assetProjectionOverrides[year];
-      projections.push({ year, value: typeof override === "number" ? override : Math.round(currentValue) });
+      projections.push({
+        year,
+        balance: typeof override === "number" ? Math.round(override) : Math.round(runningBalance),
+        returns: Math.round(returns),
+        cashflow: Math.round(yearlyCashflow),
+      });
+
+      // Column B: assets/investments grow by returns + yearly cashflow until retirement
+      runningBalance = runningBalance + returns + yearlyCashflow;
     });
 
     return projections;
-  }, [birthYear, summary.assets, illiquidYield, yearlyExpenses, retirementYear, yearlyPensionSavings, assetProjectionOverrides]);
+  }, [retirementYear, cValue, illiquidYield, summary.cashflow, assetProjectionOverrides]);
+
+useEffect(() => {
+    const buildChart = (root: am5.Root, data: Array<{ year: number; value: number }>, color: number) => {
+      root.setThemes([am5themes_Animated.new(root)]);
+      const chart = root.container.children.push(
+        am5xy.XYChart.new(root, {
+          panX: true,
+          panY: true,
+          wheelX: "panX",
+          wheelY: "zoomX",
+          pinchZoomX: true,
+        })
+      );
+
+      chart.set("scrollbarX", am5.Scrollbar.new(root, { orientation: "horizontal" }));
+
+      const xRenderer = am5xy.AxisRendererX.new(root, { minGridDistance: 20 });
+      const xAxis = chart.xAxes.push(
+        am5xy.CategoryAxis.new(root, {
+          categoryField: "year",
+          renderer: xRenderer,
+        })
+      );
+      xAxis.get("renderer").labels.template.setAll({ rotation: -30, centerY: am5.p50, centerX: am5.p0, paddingTop: 10 });
+      xAxis.data.setAll(data.map((item) => ({ year: String(item.year) })));
+
+      const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, { renderer: am5xy.AxisRendererY.new(root, {}) }));
+
+      const series = chart.series.push(
+        am5xy.LineSeries.new(root, {
+          name: "Projection",
+          xAxis,
+          yAxis,
+          valueYField: "value",
+          categoryXField: "year",
+          tooltip: am5.Tooltip.new(root, {
+            labelText: "{name}: [bold]{valueY.formatNumber('#,###')}[/]",
+          }),
+        })
+      );
+
+      series.strokes.template.setAll({ stroke: am5.color(color), strokeWidth, lineCap: "round" });
+      series.fills.template.setAll({ fill: am5.color(color), fillOpacity: 0.16 });
+      series.set("curveFactory", curveMonotoneX);
+
+      series.bullets.push(() =>
+        am5.Bullet.new(root, {
+          sprite: am5.Circle.new(root, {
+            radius: 6,
+            fill: am5.color(0xffffff),
+            stroke: am5.color(color),
+            strokeWidth: 2,
+          }),
+        })
+      );
+
+      series.data.setAll(data.map((item) => ({ year: String(item.year), value: item.value })));
+
+      const cursor = chart.set("cursor", am5xy.XYCursor.new(root, { xAxis, yAxis, behavior: "none" }));
+      cursor.lineY.set("visible", false);
+      cursor.lineX.setAll({ strokeOpacity: 0.4, stroke: am5.color(0x94a3b8) });
+
+      chart.appear(1000, 100);
+      return root;
+    };
+
+    const roots: am5.Root[] = [];
+
+    if (retirementChartRef.current) {
+      const root = am5.Root.new(retirementChartRef.current);
+      buildChart(root, retirementProjections.map((projection) => ({ year: projection.year, value: projection.balance })), 0x1d4ed8);
+      roots.push(root);
+    }
+    if (assetChartRef.current) {
+      const root = am5.Root.new(assetChartRef.current);
+      buildChart(root, assetProjections.map((projection) => ({ year: projection.year, value: projection.balance })), 0x8b5cf6);
+      roots.push(root);
+    }
+
+    return () => {
+      roots.forEach((root) => root.dispose());
+    };
+  }, [retirementProjections, assetProjections, smoothingHorizontal, smoothingVertical, strokeWidth]);
 
   const addRow = (blockKey: string) => {
     setBlocks((current) => ({
@@ -314,10 +444,10 @@ export function DashboardClient() {
       [blockKey]: [
         ...(current[blockKey] ?? []),
         blockKey === "G"
-          ? { id: crypto.randomUUID(), identifier: "New goal", value: 0, detail: "0" }
+          ? { id: crypto.randomUUID(), identifier: "", value: 0, detail: "" }
           : ["H", "I"].includes(blockKey)
-          ? { id: crypto.randomUUID(), identifier: "Note title", value: 0, detail: "Add a note here" }
-          : { id: crypto.randomUUID(), identifier: "New row", value: 0, detail: "Added row" },
+          ? { id: crypto.randomUUID(), identifier: "", value: 0, detail: "" }
+          : { id: crypto.randomUUID(), identifier: "", value: 0, detail: "" },
       ],
     }));
   };
@@ -358,6 +488,19 @@ export function DashboardClient() {
               <p className="mt-2 text-sm text-slate-600">
                 {user?.country ?? "DK"} • {user?.currency ?? "kr"} • {user?.email ?? ""}
               </p>
+              <label className="mt-3 block text-sm font-medium text-slate-500">Country</label>
+              <select
+                className="mt-2 w-full max-w-[160px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                value={selectedCountry}
+                onChange={(event) => setSelectedCountry(event.target.value as CountryCode)}
+              >
+                <option value="US">US</option>
+                <option value="UK">UK</option>
+                <option value="DK">DK</option>
+                <option value="SE">SE</option>
+                <option value="NO">NO</option>
+                <option value="FI">FI</option>
+              </select>
             </div>
             <div className="flex gap-3">
               {user?.isAdmin && (
@@ -372,9 +515,9 @@ export function DashboardClient() {
           </div>
         </header>
 
-        <section className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+        <section className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
+{[
               ["Net worth", summary.netWorth],
               ["Assets", summary.assets],
               ["Liabilities", summary.liabilities],
@@ -382,16 +525,44 @@ export function DashboardClient() {
             ].map(([label, value]) => (
               <div key={label} className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <p className="text-sm font-medium text-slate-500">{label}</p>
-                <p className="mt-3 text-2xl font-semibold text-slate-900">{user ? toCurrency(value as number, user.currency) : "—"}</p>
+                <p className="mt-3 text-2xl font-semibold text-slate-900">{toCurrency(value as number, currency)}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">Planning view</p>
+                <h2 className="text-lg font-semibold text-slate-900">Wealth overview</h2>
+              </div>
+              <div className="text-sm text-slate-500">Brief overview</div>
+            </div>
+            <div className="mt-6 space-y-3">
+              {wealthBoxOverview.map((item) => (
+                <div key={item.key} className="flex items-center gap-3">
+                  <div className="h-10 w-2 rounded-full" style={{ backgroundColor: item.color }} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+                      <span className="truncate font-medium">{item.label}</span>
+                      <span className="font-semibold text-slate-900">{toCurrency(item.value, currency)}</span>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-slate-100">
+                      <div className="h-2 rounded-full" style={{ width: `${item.width}%`, backgroundColor: item.color }} />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-500">Goals</p>
-                <h2 className="text-lg font-semibold text-slate-900">Top five goals</h2>
+                <h2 className="text-lg font-semibold text-slate-900">Goals</h2>
               </div>
               <div className="text-right text-sm text-slate-500">
                 <div className="font-semibold text-slate-900">{topGoals.length}</div>
@@ -421,90 +592,6 @@ export function DashboardClient() {
           </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          {showWealthPlanner && (
-            <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Planning view</p>
-                  <h2 className="text-lg font-semibold text-slate-900">Wealth overview</h2>
-                </div>
-                <div className="text-sm text-slate-500">Brief overview</div>
-              </div>
-              <div className="mt-6 space-y-3">
-                {wealthBoxOverview.map((item) => (
-                  <div key={item.key} className="flex items-center gap-3">
-                    <div className="h-10 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
-                        <span className="truncate font-medium">{item.label}</span>
-                        <span className="font-semibold text-slate-900">{user ? toCurrency(item.value, user.currency) : "—"}</span>
-                      </div>
-                      <div className="mt-2 h-2 rounded-full bg-slate-100">
-                        <div className="h-2 rounded-full" style={{ width: `${item.width}%`, backgroundColor: item.color }} />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-            <p className="text-sm font-medium text-slate-500">Planning focus</p>
-            <p className="mt-2 text-lg font-semibold text-slate-900">Tailor the outlook to your life stage</p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">These assumptions help the planner reflect your personal retirement trajectory.</p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button className={`rounded-full px-4 py-2 text-sm font-medium ${showWealthPlanner ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`} onClick={() => setShowWealthPlanner((value) => !value)}>
-                Wealth Planner
-              </button>
-              <button className={`rounded-full px-4 py-2 text-sm font-medium ${showPensionPlanner ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`} onClick={() => setShowPensionPlanner((value) => !value)}>
-                Pension Planner
-              </button>
-            </div>
-            <div className="mt-4 rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-              <span className="mb-2 block font-medium">Wealth block language</span>
-              <select className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" value={language} onChange={(event) => setLanguage(event.target.value as LanguageCode)}>
-                <option value="US">US</option>
-                <option value="UK">UK</option>
-                <option value="DK">DK</option>
-                <option value="SE">SE</option>
-                <option value="NO">NO</option>
-              </select>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                <span className="mb-2 block font-medium">Birth year</span>
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" type="number" value={birthYear} onChange={(event) => setBirthYear(Number(event.target.value || 1980))} />
-              </label>
-              <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                <span className="mb-2 block font-medium">Retirement age</span>
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" type="number" value={retirementAge} onChange={(event) => setRetirementAge(Number(event.target.value || 67))} />
-              </label>
-              <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                <span className="mb-2 block font-medium">Average yield % pension funds</span>
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" type="text" inputMode="numeric" value={pensionYield} onChange={(event) => setPensionYield(Number(sanitizeNumericPercent(event.target.value) || 0))} />
-              </label>
-              <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                <span className="mb-2 block font-medium">Average yield % less liquid assets</span>
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" type="text" inputMode="numeric" value={illiquidYield} onChange={(event) => setIlliquidYield(Number(sanitizeNumericPercent(event.target.value) || 0))} />
-              </label>
-              <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                <span className="mb-2 block font-medium">Expected % inflation rate</span>
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" type="text" inputMode="numeric" value={inflationRate} onChange={(event) => setInflationRate(Number(sanitizeNumericPercent(event.target.value) || 0))} />
-              </label>
-              <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                <span className="mb-2 block font-medium">Yearly pension savings to retirement</span>
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" type="number" value={yearlyPensionSavings} onChange={(event) => setYearlyPensionSavings(Number(event.target.value || 0))} />
-              </label>
-              <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                <span className="mb-2 block font-medium">Expected tax rate pension funds</span>
-                <input className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none" type="text" inputMode="numeric" value={pensionTaxRate} onChange={(event) => setPensionTaxRate(Number(sanitizeNumericPercent(event.target.value) || 0))} />
-              </label>
-            </div>
-          </div>
-        </section>
-
         <section className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div>
@@ -523,86 +610,226 @@ export function DashboardClient() {
           <div className="flex flex-col gap-4">
             <div className="grid gap-4 xl:grid-cols-2">
               {row1.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={user?.currency ?? "kr"} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {row2.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={user?.currency ?? "kr"} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
               <div className="grid gap-4">
                 {row3.map((meta) => (
-                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={user?.currency ?? "kr"} />
+                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
                 ))}
               </div>
-              <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-500">Assets / liabilities</p>
-                    <h2 className="text-lg font-semibold text-slate-900">Balance overview</h2>
-                  </div>
-                  <div className="text-sm text-slate-500">Trend</div>
-                </div>
-                <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-                  <svg viewBox="0 0 320 180" className="h-44 w-full">
-                    <line x1="24" y1="150" x2="300" y2="150" stroke="#cbd5e1" strokeWidth="1" />
-                    <line x1="24" y1="20" x2="24" y2="150" stroke="#cbd5e1" strokeWidth="1" />
-                    <path d={Array.from({ length: 10 }, (_, index) => `${index === 0 ? "M" : "L"} ${24 + (index / 9) * 276} ${150 - ((summary.assets - summary.liabilities) / Math.max(summary.assets, 1)) * 120}`).join(" ")} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" />
-                    {Array.from({ length: 10 }, (_, index) => {
-                      const x = 24 + (index / 9) * 276;
-                      const y = 150 - ((summary.assets - summary.liabilities) / Math.max(summary.assets, 1)) * 120;
-                      return <circle key={index} cx={x} cy={y} r="3" fill="#2563eb" />;
-                    })}
-                    <text x="24" y="16" fontSize="10" fill="#64748b">0</text>
-                    <text x="24" y="170" fontSize="10" fill="#64748b">Now</text>
-                    <text x="292" y="170" fontSize="10" fill="#64748b" textAnchor="end">Future</text>
-                  </svg>
-                </div>
-              </div>
             </div>
-            <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">Wealth trend</p>
-                  <h2 className="text-lg font-semibold text-slate-900">Pension outlook to age 82</h2>
-                </div>
-                <div className="text-sm text-slate-500">Timeline</div>
-              </div>
-              <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-                <svg viewBox="0 0 320 180" className="h-44 w-full">
-                  <line x1="24" y1="150" x2="300" y2="150" stroke="#cbd5e1" strokeWidth="1" />
-                  <line x1="24" y1="20" x2="24" y2="150" stroke="#cbd5e1" strokeWidth="1" />
-                  <path
-                    d={trendData.years
-                      .map((point, index) => `${index === 0 ? "M" : "L"} ${24 + (index / 9) * 276} ${150 - (point.value / (eValue || 1)) * 120}`)
-                      .join(" ")}
-                    fill="none"
-                    stroke="#1d4ed8"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                  {trendData.years.map((point, index) => {
-                    const x = 24 + (index / 9) * 276;
-                    const y = 150 - (point.value / (eValue || 1)) * 120;
-                    return <circle key={index} cx={x} cy={y} r="3" fill="#1d4ed8" />;
-                  })}
-                  <text x="24" y="16" fontSize="10" fill="#64748b">0</text>
-                  <text x="24" y="170" fontSize="10" fill="#64748b">Current</text>
-                  <text x="292" y="170" fontSize="10" fill="#64748b" textAnchor="end">Age 82</text>
-                </svg>
-              </div>
-            </div>
+            
             <div className="grid gap-4 xl:grid-cols-2">
               {row4.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={user?.currency ?? "kr"} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
               ))}
             </div>
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4">
               {row5.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={user?.currency ?? "kr"} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
               ))}
+            </div>
+
+            {showWealthPlanner && (
+            <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Assets / liabilities balance overview</p>
+                  <h2 className="text-lg font-semibold text-slate-900">Projection to age 82</h2>
+                </div>
+                <div className="text-sm text-slate-500">Pension and reserves</div>
+              </div>
+              <div className="mt-5">
+                <div ref={assetChartRef} className="h-[320px]" />
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <label className="space-y-2 text-sm text-slate-600">
+                  <span className="font-medium text-slate-900">Horizontal smoothing</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={smoothingHorizontal}
+                    onChange={(event) => setSmoothingHorizontal(Number(event.target.value))}
+                    className="w-full"
+                  />
+                </label>
+                <label className="space-y-2 text-sm text-slate-600">
+                  <span className="font-medium text-slate-900">Vertical smoothing</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={smoothingVertical}
+                    onChange={(event) => setSmoothingVertical(Number(event.target.value))}
+                    className="w-full"
+                  />
+                </label>
+                <label className="space-y-2 text-sm text-slate-600">
+                  <span className="font-medium text-slate-900">Stroke width</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={8}
+                    step={1}
+                    value={strokeWidth}
+                    onChange={(event) => setStrokeWidth(Number(event.target.value))}
+                    className="w-full"
+                  />
+                </label>
+              </div>
+            </div>
+            )}
+
+            {showPensionPlanner && (
+            <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">Retirement funds</p>
+                  <h2 className="text-lg font-semibold text-slate-900">Until retirement</h2>
+                </div>
+                <div className="text-sm text-slate-500">Pension and reserves</div>
+              </div>
+              <div className="mt-5">
+                <div ref={retirementChartRef} className="h-[320px]" />
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <label className="space-y-2 text-sm text-slate-600">
+                  <span className="font-medium text-slate-900">Horizontal smoothing</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={smoothingHorizontal}
+                    onChange={(event) => setSmoothingHorizontal(Number(event.target.value))}
+                    className="w-full"
+                  />
+                </label>
+                <label className="space-y-2 text-sm text-slate-600">
+                  <span className="font-medium text-slate-900">Vertical smoothing</span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={smoothingVertical}
+                    onChange={(event) => setSmoothingVertical(Number(event.target.value))}
+                    className="w-full"
+                  />
+                </label>
+                <label className="space-y-2 text-sm text-slate-600">
+                  <span className="font-medium text-slate-900">Stroke width</span>
+                  <input
+                    type="range"
+                    min={1}
+                    max={8}
+                    step={1}
+                    value={strokeWidth}
+                    onChange={(event) => setStrokeWidth(Number(event.target.value))}
+                    className="w-full"
+                  />
+                </label>
+              </div>
+            </div>
+            )}
+
+            <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-medium text-slate-500">Planning focus</p>
+              <p className="mt-2 text-lg font-semibold text-slate-900">Tailor the outlook to your life stage</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">These assumptions help the planner reflect your personal retirement trajectory.</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  className={`rounded-full px-4 py-2 text-sm font-medium ${showWealthPlanner ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
+                  onClick={() => setShowWealthPlanner((value) => !value)}
+                >
+                  Wealth Planner
+                </button>
+                <button
+                  className={`rounded-full px-4 py-2 text-sm font-medium ${showPensionPlanner ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
+                  onClick={() => setShowPensionPlanner((value) => !value)}
+                >
+                  Pension Planner
+                </button>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Birth year</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="number"
+                    value={birthYear}
+                    onChange={(event) => setBirthYear(Number(event.target.value || 1980))}
+                  />
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Retirement age</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="number"
+                    value={retirementAge}
+                    onChange={(event) => setRetirementAge(Number(event.target.value || 67))}
+                  />
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Average yield % pension funds</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    value={pensionYield}
+                    onChange={(event) => setPensionYield(Number(sanitizeNumericPercent(event.target.value) || 0))}
+                  />
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Average yield % less liquid assets</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    value={illiquidYield}
+                    onChange={(event) => setIlliquidYield(Number(sanitizeNumericPercent(event.target.value) || 0))}
+                  />
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Expected % inflation rate</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    value={inflationRate}
+                    onChange={(event) => setInflationRate(Number(sanitizeNumericPercent(event.target.value) || 0))}
+                  />
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Yearly pension savings to retirement</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="number"
+                    value={yearlyPensionSavings}
+                    onChange={(event) => setYearlyPensionSavings(Number(event.target.value || 0))}
+                  />
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Expected tax rate pension funds</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    value={pensionTaxRate}
+                    onChange={(event) => setPensionTaxRate(Number(sanitizeNumericPercent(event.target.value) || 0))}
+                  />
+                </label>
+              </div>
             </div>
             <div className={`grid gap-4 ${showWealthPlanner && showPensionPlanner ? "xl:grid-cols-2" : ""}`}>
               {showPensionPlanner && (
@@ -620,6 +847,9 @@ export function DashboardClient() {
                         <tr>
                           <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
                           <th className="border-b border-slate-200 pb-3 font-medium">Pension and reserves</th>
+                          <th className="border-b border-slate-200 pb-3 text-right font-medium">Estimated returns</th>
+                          <th className="border-b border-slate-200 pb-3 text-right font-medium">Yearly pension savings</th>
+                          <th className="border-b border-slate-200 pb-3 text-right font-medium">Yearly spend after inflation</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -630,7 +860,7 @@ export function DashboardClient() {
                               <input
                                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                                 type="number"
-                                value={projection.value}
+                                value={projection.balance}
                                 onChange={(event) =>
                                   setProjectionOverrides((current) => ({
                                     ...current,
@@ -639,6 +869,9 @@ export function DashboardClient() {
                                 }
                               />
                             </td>
+                            <td className="py-3 text-right tabular-nums text-slate-900">{projection.returns.toLocaleString("en-US")}</td>
+                            <td className="py-3 text-right tabular-nums text-slate-600">{projection.savings ? projection.savings.toLocaleString("en-US") : "—"}</td>
+                            <td className="py-3 text-right tabular-nums text-slate-600">{projection.spend ? projection.spend.toLocaleString("en-US") : "—"}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -662,6 +895,8 @@ export function DashboardClient() {
                         <tr>
                           <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
                           <th className="border-b border-slate-200 pb-3 font-medium">Assets and investments</th>
+                          <th className="border-b border-slate-200 pb-3 text-right font-medium">Estimated returns</th>
+                          <th className="border-b border-slate-200 pb-3 text-right font-medium">Cashflow</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -672,7 +907,7 @@ export function DashboardClient() {
                               <input
                                 className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                                 type="number"
-                                value={projection.value}
+                                value={projection.balance}
                                 onChange={(event) => {
                                   const nextValue = Number(event.target.value || 0);
                                   setAssetProjectionOverrides((current) => ({
@@ -682,6 +917,8 @@ export function DashboardClient() {
                                 }}
                               />
                             </td>
+                            <td className="py-3 text-right tabular-nums text-slate-900">{projection.returns.toLocaleString("en-US")}</td>
+                            <td className="py-3 text-right tabular-nums text-slate-600">{projection.cashflow.toLocaleString("en-US")}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -799,7 +1036,7 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, currency }: Blo
                 />
                 <textarea
                   className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
-                  value={row.detail}
+                  value={row.detail ?? ""}
                   onChange={(event) => updateRow(meta.key, row.id, "detail", event.target.value)}
                   placeholder="Write your note here"
                   rows={3}
@@ -810,7 +1047,7 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, currency }: Blo
                 </button>
               </div>
             ) : (
-              <div className="grid gap-3 md:grid-cols-[1.3fr_0.55fr_auto]">
+              <div className={`grid gap-3 ${isGoalBlock ? "md:grid-cols-[1.2fr_0.55fr_0.55fr_auto]" : "md:grid-cols-[1.3fr_0.55fr_auto]"}`}>
                 <input
                   className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
                   value={row.identifier}
@@ -827,6 +1064,18 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, currency }: Blo
                   onChange={(event) => updateRow(meta.key, row.id, "value", event.target.value)}
                   placeholder={isGoalBlock ? "Target" : "Value"}
                 />
+                {isGoalBlock && (
+                  <input
+                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none max-w-[10rem]"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={9}
+                    value={row.detail ?? ""}
+                    onChange={(event) => updateRow(meta.key, row.id, "detail", event.target.value)}
+                    placeholder="Status"
+                  />
+                )}
                 <button className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700" onClick={() => deleteRow(meta.key, row.id)}>
                   <span aria-hidden="true">🗑</span>
                   <span className="sr-only">Delete row</span>

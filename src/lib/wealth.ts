@@ -27,9 +27,13 @@ export function normalizeBlockRows(blockRows: Array<{ value?: number | null }> =
 }
 
 export function getCurrency(country: string) {
-  if (country === "UK") return "£";
-  if (country === "FI") return "€";
-  return "kr";
+  if (country === "US") return "USD";
+  if (country === "UK") return "GBP";
+  if (country === "FI") return "EUR";
+  if (country === "DK") return "DKR";
+  if (country === "SE") return "SEK";
+  if (country === "NO") return "NOK";
+  return country.toUpperCase();
 }
 
 export function calculateWealth(blocks: Record<string, Array<{ value?: number | null }>>) {

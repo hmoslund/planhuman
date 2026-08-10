@@ -1,0 +1,26 @@
+Block,Field,US,UK English,Dansk (DK),Svenska (SE),Norsk (NO),Suomi (FI)
+A,Headline,Highly Liquid Assets,,,,,Likvidit varat
+,Subtitle,"Cash, savings, stocks and readily accessible assets",,,,,Käteinen, säästöt ja helposti käytettävät varat
+A2,Headline,Short-Term Debt,,,,,Lyhytaikainen velka
+,Subtitle,Short-term borrowing and credit balance,,,,,Lyhytaikaiset lainat ja luottotilit
+B,Headline,Short-Term Receivables & Locked Savings,,,,,Lyhytaikaiset saamiset & sidottu säästö
+,Subtitle," Deposit, Money owed to you, Short-term private loans, Pending payouts",,,,,Talletukset, saatavat ja lyhytaikaiset yksityislainat
+B2,Headline,Personal Debt & Current Obligations,,,,,Personal Debt & Current Obligations
+,Subtitle,"Personal loans, Outstanding medical bills, Tax bills due this year, Unpaid invoices",,,,,Henkilökohtaiset lainat, avoimet laskut, verovelat
+C,Headline,Longer-Term Investments,,,,,Longer-Term Investments
+,Subtitle,"Stock portfolio, Brokerage accounts, Rental properties, Crypto, Private equity",,,,,Osakesalkku, välitysrahastot, vuokra-asunnot, kryptovaluutat, pääomasijoitukset
+C2,Headline,Debt Linked to Long-Term Assets,,,,,Debt Linked to Long-Term Assets
+,Subtitle,"Investment mortgages, Investment debt, Commercial real estate loans",,,,,Sijoitusasuntolainat, sijoitusvelat, kaupalliset lainat
+C3,Headline,Potential Tax Liability,,,,,Potential Tax Liability
+,Subtitle,"Capital gains tax on unrealized stock gains, Deferred taxes ",,,,,Mahdollinen verovelka
+D,Headline,Personal Home & Lifestyle Assets,,,,,Personal Home & Lifestyle Assets
+,Subtitle,"Primary residence valuation, Vehicles, Jewelry, Collectibles",,,,,Pääasunnon arvo, autot, korut, keräilyesineet
+D2,Headline,Mortgage & Personal Debt,,,,,Mortgage & Personal Debt
+,Subtitle,"Primary residence mortgage, Auto loans,  other loans ",,,,,Asuntolaina, autolaina, muut henkilökohtaiset lainat
+E,Headline,Pension & Reserves,,,,,Pension & Reserves
+,Subtitle,"Pension funds, Corporate pensions, State pension, Other funds",,,,,Eläkevarat, työeläke ja muut varaukset
+J,Headline,Salary & Income,,,,,Salary & Income
+,Subtitle,"Monthly net salary, Other income, Rental income, Dividends, Bonuses",,,,,Kuukausipalkka, muut tulot, vuokratulot, osingot
+K,Headline,Monthly Expenses,,,,,Monthly Expenses
+,Subtitle,"Rent, Grocery, Utilities, Subscriptions, Insurance, Entertainment, Transportation, Travel, Children, Health",,,,,Vuokra, ruoka, laskut, tilaukset, vakuutukset, viihde, liikkuminen, matkustus, lapset, terveys
+Currency,Currency,USD,GBP,DKR,SEK,NOK,EUR
