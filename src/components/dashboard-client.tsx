@@ -8,7 +8,7 @@ import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import { curveMonotoneX } from "d3-shape";
 import { calculateWealth, getCurrency, toCurrency } from "@/lib/wealth";
 
-type Row = { id: string; identifier: string; value: number; detail: string };
+type Row = { id: string; identifier: string; value: number; detail: string; completed?: boolean };
 type Blocks = Record<string, Row[]>;
 
 type UserProfile = {
@@ -22,6 +22,8 @@ type UserProfile = {
 };
 
 type CountryCode = "US" | "UK" | "DK" | "SE" | "NO" | "FI";
+
+const MAX_ROWS = 400;
 
 const blockMeta = [
   { key: "A", title: "Highly liquid assets", blurb: "Cash, savings and readily accessible assets" },
@@ -187,6 +189,7 @@ export function DashboardClient() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>("US");
   const [showWealthPlanner, setShowWealthPlanner] = useState(true);
   const [showPensionPlanner, setShowPensionPlanner] = useState(true);
@@ -280,6 +283,13 @@ export function DashboardClient() {
       }),
     }));
   };
+  const toggleComplete = (blockKey: string, rowId: string) => {
+    setBlocks((current) => ({
+      ...current,
+      [blockKey]: (current[blockKey] ?? []).map((row) => (row.id === rowId ? { ...row, completed: !row.completed } : row)),
+    }));
+  };
+
 
   const retirementYear = birthYear + retirementAge;
   const monthlyExpenses = blocks.K?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0;
@@ -439,17 +449,22 @@ useEffect(() => {
   }, [retirementProjections, assetProjections, smoothingHorizontal, smoothingVertical, strokeWidth]);
 
   const addRow = (blockKey: string) => {
-    setBlocks((current) => ({
-      ...current,
-      [blockKey]: [
-        ...(current[blockKey] ?? []),
-        blockKey === "G"
-          ? { id: crypto.randomUUID(), identifier: "", value: 0, detail: "" }
-          : ["H", "I"].includes(blockKey)
-          ? { id: crypto.randomUUID(), identifier: "", value: 0, detail: "" }
-          : { id: crypto.randomUUID(), identifier: "", value: 0, detail: "" },
-      ],
-    }));
+    setBlocks((current) => {
+      const total = Object.values(current).reduce((n, rows) => n + (rows?.length ?? 0), 0);
+      if (total >= MAX_ROWS) {
+        setMessage(`Row limit reached (${MAX_ROWS}). Delete a row to add more.`);
+        return current;
+      }
+      return {
+        ...current,
+        [blockKey]: [
+          ...(current[blockKey] ?? []),
+          blockKey === "G"
+            ? { id: crypto.randomUUID(), identifier: "", value: 0, detail: "", completed: false }
+            : { id: crypto.randomUUID(), identifier: "", value: 0, detail: "" },
+        ],
+      };
+    });
   };
 
   const deleteRow = (blockKey: string, rowId: string) => {
@@ -477,6 +492,125 @@ useEffect(() => {
     router.push("/");
   }
 
+  const buildAiPrompt = () => {
+    const country = user?.country ?? selectedCountry;
+    const sym = (() => {
+      switch (country) {
+        case "US":
+          return "$";
+        case "UK":
+          return "£";
+        case "FI":
+          return "€";
+        case "DK":
+          return "DKK ";
+        case "SE":
+          return "SEK ";
+        case "NO":
+          return "NOK ";
+        default:
+          return `${country} `;
+      }
+    })();
+
+    const nowYear = new Date().getFullYear();
+    const currentAge = Math.max(nowYear - (birthYear || nowYear), 0);
+    const yearsToRetirement = Math.max(retirementAge - currentAge, 0);
+
+    const assets = summary.assets;
+    const liabilities = summary.liabilities;
+    const netWorth = summary.netWorth;
+    const debtToAssetRatio = assets > 0 ? Math.round((liabilities / assets) * 100) : 0;
+    const monthlyIncome = (blocks.J ?? []).reduce((sum, row) => sum + Number(row.value || 0), 0);
+    const monthlyExpenses = (blocks.K ?? []).reduce((sum, row) => sum + Number(row.value || 0), 0);
+    const monthlySurplus = summary.cashflow;
+
+    const metaByKey = Object.fromEntries(translatedBlockMeta.map((meta) => [meta.key, meta]));
+
+    const goalsList =
+      (blocks.G ?? []).length > 0
+        ? (blocks.G ?? [])
+            .map((goal) => {
+              const completed = goal.completed ? " [COMPLETED]" : "";
+              return `  - ${goal.identifier || "Untitled goal"} (Target: ${sym}${goal.value || 0} | Status: ${goal.detail || "in progress"})${completed}`;
+            })
+            .join("\n")
+        : "  - No goals defined yet.";
+
+    const breakdownKeys = Object.keys(blocks).filter((key) => !["G", "H", "I", "L"].includes(key));
+    const blocksBreakdown = breakdownKeys
+      .map((key) => {
+        const rows = blocks[key] ?? [];
+        const title = metaByKey[key]?.title ?? key;
+        const lines =
+          rows.length > 0
+            ? rows
+                .map((row) => `  - ${row.identifier || "—"}: ${sym}${row.value || 0}${row.detail ? ` (${row.detail})` : ""}`)
+                .join("\n")
+            : "  - (empty)";
+        return `### ${key} - ${title}\n${lines}`;
+      })
+      .join("\n\n") || "(no wealth data entered)";
+
+    return `You are an elite, highly pragmatic personal financial advisor and wealth manager. Your single mission is to deliver an objective, deeply actionable, and personalized analysis of my financial situation based strictly on the data provided below.
+
+Adopt a direct, encouraging, yet candid tone (like an experienced advisor speaking to a client). Focus on actionable strategy rather than generic advice.
+
+==================================================
+1. CLIENT PROFILE & FINANCIAL DATA
+==================================================
+• Demographics:
+  - Birth Year: ${birthYear} (Current Age: ~${currentAge})
+  - Country / Location: ${country}
+  - Target Retirement Age: ${retirementAge} (Years to Horizon: ~${yearsToRetirement})
+• Financial Position Snapshot:
+  - Total Net Worth: ${sym}${netWorth}
+  - Total Debt: ${sym}${liabilities} (Debt-to-Asset Ratio: ${debtToAssetRatio}%)
+  - Net Monthly Cash Flow: ${sym}${monthlySurplus} (Income: ${sym}${monthlyIncome} | Expenses: ${sym}${monthlyExpenses})
+• Key Life & Financial Goals:
+${goalsList}
+
+==================================================
+2. DETAILED WEALTH BLOCKS & STRUCTURE
+==================================================
+${blocksBreakdown}
+
+==================================================
+3. REQUIRED ANALYSIS & REPORT STRUCTURE
+==================================================
+Please organize your advice into the following 5 distinct sections:
+
+## 1. Executive Summary & Diagnosis
+Provide a succinct overall diagnosis of my financial health. Highlight my current financial phase (e.g., wealth building, consolidation, high-leverage risk) and give a 1-sentence assessment of my trajectory.
+
+## 2. Key Observations, Balance & Risk Profile (5–10 Bullet Points)
+• Asset Allocation & Liquidity: Is my portfolio properly balanced for my age (${currentAge}) and horizon?
+• Risk Exposure: Comment on my debt concentration, real estate vs. equity weighting, crypto, or single-asset concentration.
+• Cash Flow Efficiency: Are my monthly savings/surplus sufficient to support my long-term goals?
+• Regional & Tax Considerations: Note any specific leverage, tax, or pension opportunities relevant to operating in ${country}.
+
+## 3. Reality Check on Key Goals
+For each goal listed in my profile:
+• Is it realistic given my net worth, cash flow, and timeline?
+• What exact monthly contribution, return rate, or shift in assets is needed to achieve it?
+• What trade-offs or adjustments (if any) do you recommend considering?
+
+## 4. Action Plan: Priority Roadmap
+Categorize recommendations into three clear phases:
+• Immediate Actions (Next 30 Days): Critical fixes, emergency fund adjustments, high-interest debt payoffs, or immediate cash allocation.
+• Medium-Term Strategy (1–3 Years): Rebalancing, tax-advantaged account optimization, or milestone prep.
+• Long-Term Strategy (3+ Years to Retirement): Wealth accumulation, mortgage reduction, or pension structuring.
+
+## 5. Next Steps & Professional Guidance
+• Immediate Next Steps: Checklist of 3 specific tasks I should complete this week.
+• Advisory Needs: Which local specialists (e.g., tax accountant, estate lawyer, independent mortgage broker) should I consult in ${country}?
+• Learning & Sources: Recommend 2–3 high-quality, reputable local sources or framework concepts for further reading.
+
+Begin your response with Section 1.
+
+(END OF AI TEXT)`;
+  };
+
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -488,19 +622,6 @@ useEffect(() => {
               <p className="mt-2 text-sm text-slate-600">
                 {user?.country ?? "DK"} • {user?.currency ?? "kr"} • {user?.email ?? ""}
               </p>
-              <label className="mt-3 block text-sm font-medium text-slate-500">Country</label>
-              <select
-                className="mt-2 w-full max-w-[160px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
-                value={selectedCountry}
-                onChange={(event) => setSelectedCountry(event.target.value as CountryCode)}
-              >
-                <option value="US">US</option>
-                <option value="UK">UK</option>
-                <option value="DK">DK</option>
-                <option value="SE">SE</option>
-                <option value="NO">NO</option>
-                <option value="FI">FI</option>
-              </select>
             </div>
             <div className="flex gap-3">
               {user?.isAdmin && (
@@ -610,31 +731,61 @@ useEffect(() => {
           <div className="flex flex-col gap-4">
             <div className="grid gap-4 xl:grid-cols-2">
               {row1.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {row2.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
               <div className="grid gap-4">
                 {row3.map((meta) => (
-                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
+                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
                 ))}
               </div>
             </div>
             
             <div className="grid gap-4 xl:grid-cols-2">
               {row4.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
               ))}
             </div>
             <div className="grid gap-4">
               {row5.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} currency={currency} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
               ))}
+            </div>
+
+            {/* AI guided advisory */}
+            <div className="mt-2 rounded-[24px] border border-violet-200 bg-violet-50 p-5 shadow-sm">
+              <p className="text-sm font-medium text-violet-500">AI</p>
+              <h2 className="mt-1 text-lg font-semibold text-violet-900">AI guided advisory</h2>
+              <p className="mt-2 text-sm leading-6 text-violet-700/80">
+                Build your AI prompt, copy the ai-text and paste into ChatGpt.com or any other AI agents.
+              </p>
+              <textarea
+                rows={8}
+                className="mt-4 w-full rounded-2xl border border-violet-200 bg-white p-4 text-sm leading-6 text-slate-800 outline-none"
+                placeholder="Your AI prompt will appear here. You can edit it freely before pasting it into an AI agent."
+                value={aiPrompt}
+                onChange={(event) => setAiPrompt(event.target.value)}
+              />
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
+                  onClick={() => setAiPrompt(buildAiPrompt())}
+                >
+                  Build AI prompt
+                </button>
+                <button
+                  className="rounded-full border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100"
+                  onClick={() => navigator.clipboard?.writeText(aiPrompt)}
+                >
+                  Copy prompt
+                </button>
+              </div>
             </div>
 
             {showWealthPlanner && (
@@ -642,7 +793,7 @@ useEffect(() => {
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <p className="text-sm font-medium text-slate-500">Assets / liabilities balance overview</p>
-                  <h2 className="text-lg font-semibold text-slate-900">Projection to age 82</h2>
+                  <h2 className="text-lg font-semibold text-slate-900">Projection to retirement</h2>
                 </div>
                 <div className="text-sm text-slate-500">Pension and reserves</div>
               </div>
@@ -940,10 +1091,11 @@ type BlockCardProps = {
   updateRow: (blockKey: string, rowId: string, field: keyof Row, value: string) => void;
   addRow: (blockKey: string) => void;
   deleteRow: (blockKey: string, rowId: string) => void;
+  toggleComplete: (blockKey: string, rowId: string) => void;
   currency: string;
 };
 
-function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, currency }: BlockCardProps) {
+function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency }: BlockCardProps) {
   const rows = blocks[meta.key] ?? [];
   const isGoalBlock = meta.key === "G";
   const isLiabilityBlock = ["A2", "B2", "C2", "C3", "D2"].includes(meta.key);
@@ -1025,7 +1177,7 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, currency }: Blo
 
       <div className="mt-5 space-y-3">
         {rows.map((row) => (
-          <div key={row.id} className={`rounded-2xl border p-3 ${isLiabilityBlock ? "border-rose-200 bg-white/80" : "border-slate-200 bg-slate-50"}`}>
+          <div key={row.id} className={`rounded-2xl border p-3 ${isGoalBlock && row.completed ? "border-sky-200 bg-sky-50 opacity-70" : isLiabilityBlock ? "border-rose-200 bg-white/80" : "border-slate-200 bg-slate-50"}`}>
             {isNoteBlock ? (
               <div className="space-y-3">
                 <input
@@ -1047,7 +1199,18 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, currency }: Blo
                 </button>
               </div>
             ) : (
-              <div className={`grid gap-3 ${isGoalBlock ? "md:grid-cols-[1.2fr_0.55fr_0.55fr_auto]" : "md:grid-cols-[1.3fr_0.55fr_auto]"}`}>
+              <div className={`grid gap-3 ${isGoalBlock ? "md:grid-cols-[auto_1.2fr_0.55fr_0.55fr_auto]" : "md:grid-cols-[1.3fr_0.55fr_auto]"}`}>
+                {isGoalBlock && (
+                  <label className="flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      checked={!!row.completed}
+                      onChange={() => toggleComplete(meta.key, row.id)}
+                      className="h-5 w-5 rounded border-slate-300 accent-sky-600"
+                      aria-label="Mark goal complete"
+                    />
+                  </label>
+                )}
                 <input
                   className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
                   value={row.identifier}

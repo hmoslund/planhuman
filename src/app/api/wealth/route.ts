@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { calculateWealth, createDefaultBlocks, getUserFromRequest, normalizeBlockRows } from "@/lib/auth";
+import { calculateWealth, createDefaultBlocks, getUserFromRequest, MAX_ROWS, normalizeBlockRows } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
@@ -45,6 +45,11 @@ export async function POST(request: Request) {
     const normalizedBlocks = Object.fromEntries(
       Object.entries(body.blocks ?? {}).map(([key, rows]) => [key, normalizeBlockRows(rows as Array<{ value?: number | null }>)])
     );
+
+    const totalRows = Object.values(normalizedBlocks).reduce((count, rows) => count + (rows?.length ?? 0), 0);
+    if (totalRows > MAX_ROWS) {
+      return NextResponse.json({ error: `Row limit reached (${MAX_ROWS}).` }, { status: 400 });
+    }
 
     const existing = await prisma.wealthRecord.findFirst({ where: { userId: user.id } });
     if (existing) {

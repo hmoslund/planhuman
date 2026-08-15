@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSessionForUser, getCurrency, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { createSessionForUser, getCurrency, isAdminEmail, setSessionCookie, verifyPassword } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function POST(request: Request) {
@@ -15,6 +15,11 @@ export async function POST(request: Request) {
     const valid = await verifyPassword(password, user.passwordHash);
     if (!valid) {
       return NextResponse.json({ error: "Incorrect password." }, { status: 401 });
+    }
+
+    if (isAdminEmail(user.email) && !user.isAdmin) {
+      await prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
+      user.isAdmin = true;
     }
 
     const { token } = await createSessionForUser(user.id);

@@ -1,26 +1,26 @@
 Block,Field,US,UK English,Dansk (DK),Svenska (SE),Norsk (NO),Suomi (FI)
-A,Headline,Highly Liquid Assets,,,,,Likvidit varat
-,Subtitle,"Cash, savings, stocks and readily accessible assets",,,,,Käteinen, säästöt ja helposti käytettävät varat
-A2,Headline,Short-Term Debt,,,,,Lyhytaikainen velka
-,Subtitle,Short-term borrowing and credit balance,,,,,Lyhytaikaiset lainat ja luottotilit
-B,Headline,Short-Term Receivables & Locked Savings,,,,,Lyhytaikaiset saamiset & sidottu säästö
-,Subtitle," Deposit, Money owed to you, Short-term private loans, Pending payouts",,,,,Talletukset, saatavat ja lyhytaikaiset yksityislainat
-B2,Headline,Personal Debt & Current Obligations,,,,,Personal Debt & Current Obligations
-,Subtitle,"Personal loans, Outstanding medical bills, Tax bills due this year, Unpaid invoices",,,,,Henkilökohtaiset lainat, avoimet laskut, verovelat
-C,Headline,Longer-Term Investments,,,,,Longer-Term Investments
-,Subtitle,"Stock portfolio, Brokerage accounts, Rental properties, Crypto, Private equity",,,,,Osakesalkku, välitysrahastot, vuokra-asunnot, kryptovaluutat, pääomasijoitukset
-C2,Headline,Debt Linked to Long-Term Assets,,,,,Debt Linked to Long-Term Assets
-,Subtitle,"Investment mortgages, Investment debt, Commercial real estate loans",,,,,Sijoitusasuntolainat, sijoitusvelat, kaupalliset lainat
-C3,Headline,Potential Tax Liability,,,,,Potential Tax Liability
-,Subtitle,"Capital gains tax on unrealized stock gains, Deferred taxes ",,,,,Mahdollinen verovelka
-D,Headline,Personal Home & Lifestyle Assets,,,,,Personal Home & Lifestyle Assets
-,Subtitle,"Primary residence valuation, Vehicles, Jewelry, Collectibles",,,,,Pääasunnon arvo, autot, korut, keräilyesineet
-D2,Headline,Mortgage & Personal Debt,,,,,Mortgage & Personal Debt
-,Subtitle,"Primary residence mortgage, Auto loans,  other loans ",,,,,Asuntolaina, autolaina, muut henkilökohtaiset lainat
-E,Headline,Pension & Reserves,,,,,Pension & Reserves
-,Subtitle,"Pension funds, Corporate pensions, State pension, Other funds",,,,,Eläkevarat, työeläke ja muut varaukset
-J,Headline,Salary & Income,,,,,Salary & Income
-,Subtitle,"Monthly net salary, Other income, Rental income, Dividends, Bonuses",,,,,Kuukausipalkka, muut tulot, vuokratulot, osingot
-K,Headline,Monthly Expenses,,,,,Monthly Expenses
-,Subtitle,"Rent, Grocery, Utilities, Subscriptions, Insurance, Entertainment, Transportation, Travel, Children, Health",,,,,Vuokra, ruoka, laskut, tilaukset, vakuutukset, viihde, liikkuminen, matkustus, lapset, terveys
+A,Headline,Highly Liquid Assets,Highly Liquid Assets,Likvide midler,Likvida medel,Likvide midler,Likvidit varat
+,Subtitle,"Cash, savings, stocks and readily accessible assets","Cash, savings and readily accessible assets","Kontanter, opsparing og lettilgængelige midler","Kontanter, sparande och lättillgängliga tillgångar","Kontanter, sparing og lett tilgjengelige midler","Käteinen, säästöt ja helposti käytettävät varat"
+A2,Headline,Short-Term Debt,Short-Term Debt,Kortfristet gæld,Kortfristiga skulder,Kortsiktig gjeld,Lyhytaikainen velka
+,Subtitle,Short-term borrowing and credit balance,Short-term borrowing and credit balance,Kortfristede lån og kreditbalance,Kortfristade lån och kreditbalanser,Kortsiktige lån og kredittbalanser,Lyhytaikaiset lainat ja luottotilit
+B,Headline,Short-Term Receivables & Locked Savings,Short-Term Receivables & Locked Savings,Tilgodehavender & kortfristet bundne midler,Kortfristiga fordringar & låst sparande,Kortsiktige fordringer & bundet sparing,Lyhytaikaiset saamiset & sidottu säästö
+,Subtitle," Deposit, Money owed to you, Short-term private loans, Pending payouts","Assets less liquid and debtors","Mindre likvide aktiver og tilgodehavender","Mindre likvida tillgångar och fordringar","Mindre likvide eiendeler og fordringer","Talletukset, saatavat ja lyhytaikaiset yksityislainat"
+B2,Headline,Personal Debt & Current Obligations,Personal Debt & Current Obligations,Personlig gæld & løbende forpligtelser,Privatskulder & löpande förpliktelser,Personlig gjeld & løpende forpligtelser,Personal Debt & Current Obligations
+,Subtitle,"Personal loans, Outstanding medical bills, Tax bills due this year, Unpaid invoices","Personal debt and short-term obligations","Personlig gæld og kortfristede forpligtelser","Personliga skulder och kortfristiga förpliktelser","Personlig gjeld og kortsiktige forpligtelser","Henkilökohtaiset lainat, avoimet laskut, verovelat"
+C,Headline,Longer-Term Investments,Longer-Term Investments,Langsigtede investeringer,Långsiktiga investeringar,Langsiktige investeringer,Longer-Term Investments
+,Subtitle,"Stock portfolio, Brokerage accounts, Rental properties, Crypto, Private equity","Real estate, stocks and alternative assets","Investeringsejendomme, aktier og alternative aktiver","Investeringsfastigheter, aktier och alternativa tillgångar","Investeringseiendom, aksjer og alternative eiendeler","Osakesalkku, välitysrahastot, vuokra-asunnot, kryptovaluutat, pääomasijoitukset"
+C2,Headline,Debt Linked to Long-Term Assets,Debt Linked to Long-Term Assets,Gæld knyttet til langsigtede investeringer,Skulder kopplade till långsiktiga tillgångar,Gjeld knyttet til langsiktige eiendeler,Debt Linked to Long-Term Assets
+,Subtitle,"Investment mortgages, Investment debt, Commercial real estate loans","Long-term debt obligations","Langsigtede gældsforpligtelser","Långsiktiga skuldförpliktelser","Langsiktige gjeldsforpligtelser","Sijoitusasuntolainat, sijoitusvelat, kaupalliset lainat"
+C3,Headline,Potential Tax Liability,Potential Tax Liability,Forventet skatteforpligtelse,Potentiell skatteskuld,Forventet skatteforpliktelse,Potential Tax Liability
+,Subtitle,"Capital gains tax on unrealized stock gains, Deferred taxes ","Tax linked to long-term investments","Skat knyttet til langsigtede investeringer","Skatt kopplad till långsiktiga investeringar","Skatt knyttet til langsiktige eiendeler","Mahdollinen verovelka"
+D,Headline,Personal Home & Lifestyle Assets,Personal Home & Lifestyle Assets,Helårsbolig & livsstilsaktiver,Bostad & livsstilstillgångar,Primærbolig & livsstilseiendeler,Personal Home & Lifestyle Assets
+,Subtitle,"Primary residence valuation, Vehicles, Jewelry, Collectibles","Private home and personal assets","Egen bolig og personlige aktiver","Egen bostad och personliga tillgångar","Egen bolig og personlige eiendeler","Pääasunnon arvo, autot, korut, keräilyesineet"
+D2,Headline,Mortgage & Personal Debt,Mortgage & Personal Debt,Realkredit- & forbrugsgæld,Bolån & privata fordringsskulder,Boliglån & personlig gjeld,Mortgage & Personal Debt
+,Subtitle,"Primary residence mortgage, Auto loans,  other loans ","Mortgage and debt linked to personal assets","Realkreditlån og gæld knyttet til personlige aktiver","Bolån och skulder kopplade till personliga tillgångar","Boliglån og gjeld knyttet til personlige eiendeler","Asuntolaina, autolaina, muut henkilökohtaiset lainat"
+E,Headline,Pension & Reserves,Pension & Reserves,Pension & reserver,Pension & reserver,Pensjon & reserver,Pension & Reserves
+,Subtitle,"Pension funds, Corporate pensions, State pension, Other funds","Retirement and precautionary reserves","Pensionsopsparing og forsigtighedsreserver","Pensionssparande och trygghetsreserver","Pensjonssparing og trygghetsreserver","Eläkevarat, työeläke ja muut varaukset"
+J,Headline,Salary & Income,Salary & Income,Løn & indkomst,Lön & inkomster,Lønn & inntekt,Salary & Income
+,Subtitle,"Monthly net salary, Other income, Rental income, Dividends, Bonuses","Monthly salary or income","Månedlig løn eller indtægt","Månatlig lön eller inkomst","Månedlig lønn eller inntekt","Kuukausipalkka, muut tulot, vuokratulot, osingot"
+K,Headline,Monthly Expenses,Monthly Expenses,Månedlige udgifter,Månadskostnader,Månedlige utgifter,Monthly Expenses
+,Subtitle,"Rent, Grocery, Utilities, Subscriptions, Insurance, Entertainment, Transportation, Travel, Children, Health","Regular household expenses","Faste og variable husholdningsudgifter","Fasta och rörliga hushållskostnader","Faste og variable husholdningsutgifter","Vuokra, ruoka, laskut, tilaukset, vakuutukset, viihde, liikkuminen, matkustus, lapset, terveys"
 Currency,Currency,USD,GBP,DKR,SEK,NOK,EUR

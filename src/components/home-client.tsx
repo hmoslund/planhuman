@@ -64,7 +64,7 @@ export function HomeClient() {
       <div className="mx-auto flex max-w-6xl flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
         <section className="max-w-2xl rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
           <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-600">
-            WealthPlanner MVP
+            Plan Human
           </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
             A calm, human-first space for personal wealth planning.
@@ -76,13 +76,61 @@ export function HomeClient() {
             {[
               ["One page", "A single dashboard with your key wealth numbers at a glance."],
               ["Secure", "Each user keeps their own wealth record with email verification."],
-              ["Low cost", "Built for a small user base and simple hosting."],
+              ["Free to use", "but donate to support this project and feel good projects."],
             ].map(([title, description]) => (
               <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
               </div>
             ))}
+          </div>
+
+          <div className="mt-8 space-y-5 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">How Your Data Is Handled</h2>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Your data is securely hosted, and it belongs entirely to you. We do not sell, rent, or share your personal or financial information.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                In fact, we don&apos;t even need your real name&mdash;you are welcome to sign up using an alias and any of your email addresses.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                If you ever decide to leave, clicking &quot;Delete&quot; permanently removes all your data instantly. We also preserve the right to delete your data to protect your and other users data.
+              </p>
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">The People Behind the Project</h2>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                Many financial advisors push you toward expensive platforms, and similar tools often operate for profit or monetize your private information.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">We do things differently.</p>
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Our Mission Is Simple</h2>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                We want to give everyone access to free, straightforward tools to create a wealth plan and take control of their financial future.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                To keep this service free while protecting your privacy, we offer two simple options:
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
+                <li><span className="font-medium text-slate-800">Free Plan:</span> Supported by discreet advertisements.</li>
+                <li><span className="font-medium text-slate-800">Ad-Free Plan:</span> Donate via &quot;Buy Me a Coffee&quot; once a year to turn off all ads.</li>
+              </ul>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                Every donation goes directly toward hosting, security, and developing cool new features.
+              </p>
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Have a great idea for the app?</h2>
+              <p className="mt-2 text-sm leading-7 text-slate-600">
+                If you&apos;ve supported us with a coffee, we&apos;d love to hear your thoughts! Drop us an email anytime at{" "}
+                <a href="mailto:people@planhuman.com" className="font-medium text-slate-900 underline">
+                  people@planhuman.com
+                </a>
+                .
+              </p>
+            </div>
           </div>
         </section>
 

@@ -15,6 +15,8 @@ model User {
   currency                String                  @default("kr")
   emailVerified           Boolean                 @default(false)
   isAdmin                 Boolean                 @default(false)
+  donated                 Boolean                 @default(false)
+  donatedAt               DateTime?
   createdAt               DateTime                @default(now())
   updatedAt               DateTime                @updatedAt
   sessions                Session[]

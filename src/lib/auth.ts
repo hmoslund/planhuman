@@ -17,22 +17,30 @@ export type AppUser = {
 const SESSION_COOKIE_NAME = "wealth-session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
+export const MAX_ROWS = 400;
+
+const ADMIN_EMAILS = ["hmoslund@outlook.com"];
+
+export function isAdminEmail(email: string) {
+  return ADMIN_EMAILS.includes(String(email).trim().toLowerCase());
+}
+
 export function createDefaultBlocks() {
   return {
-    A: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    A2: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    B: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    B2: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    C: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    C2: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    C3: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    D: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    D2: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    E: [{ id: crypto.randomUUID(), identifier: "Example", value: 1000, detail: "Example text" }],
-    J: [{ id: crypto.randomUUID(), identifier: "Salary", value: 10000, detail: "Example income" }],
-    K: [{ id: crypto.randomUUID(), identifier: "Expenses", value: 4000, detail: "Example expense" }],
-    L: [{ id: crypto.randomUUID(), identifier: "Savings", value: 2000, detail: "Example savings" }],
-    G: [{ id: crypto.randomUUID(), identifier: "Home upgrade", value: 500000, detail: "280000" }],
+    A: [],
+    A2: [],
+    B: [],
+    B2: [],
+    C: [],
+    C2: [],
+    C3: [],
+    D: [],
+    D2: [],
+    E: [],
+    J: [],
+    K: [],
+    L: [],
+    G: [],
   };
 }
 

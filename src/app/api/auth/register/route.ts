@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createDefaultBlocks, getCurrency, hashPassword, issueVerificationToken } from "@/lib/auth";
+import { createDefaultBlocks, getCurrency, hashPassword, isAdminEmail, issueVerificationToken } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/email";
 
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
 
     const passwordHash = await hashPassword(password);
     const currency = getCurrency(normalizedCountry);
-    const isAdmin = normalizedEmail.endsWith("@wealthplanner.com");
+    const isAdmin = isAdminEmail(normalizedEmail) || normalizedEmail.endsWith("@wealthplanner.com");
 
     const user = await prisma.user.create({
       data: {
