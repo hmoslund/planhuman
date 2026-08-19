@@ -25,7 +25,9 @@ export async function POST(request: Request) {
 
     const passwordHash = await hashPassword(password);
     const currency = getCurrency(normalizedCountry);
-    const isAdmin = isAdminEmail(normalizedEmail) || normalizedEmail.endsWith("@wealthplanner.com");
+    // Admin is granted ONLY to the explicitly allowed email addresses (see ADMIN_EMAILS in lib/auth.ts).
+    // No wildcard domains are trusted, so a new user can never self-promote to admin.
+    const isAdmin = isAdminEmail(normalizedEmail);
 
     const latest = await prisma.user.aggregate({ _max: { userNumber: true } });
     const userNumber = (latest._max.userNumber ?? 499) + 1;
