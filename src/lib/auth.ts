@@ -12,6 +12,8 @@ export type AppUser = {
   currency: string;
   emailVerified: boolean;
   isAdmin: boolean;
+  donated: boolean;
+  userNumber: number | null;
 };
 
 const SESSION_COOKIE_NAME = "wealth-session";

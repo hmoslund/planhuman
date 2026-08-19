@@ -167,14 +167,14 @@ export function HomeClient() {
             {mode === "register" && (
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="name">
-                  Name
+                  Name, or use alias to protect your ID
                 </label>
                 <input
                   id="name"
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none ring-0"
                   value={form.name}
                   onChange={(event) => setForm((value) => ({ ...value, name: event.target.value }))}
-                  placeholder="Your name"
+                  placeholder="Name, or use alias to protect your ID"
                 />
               </div>
             )}
@@ -253,6 +253,26 @@ export function HomeClient() {
             </div>
             {forgotStatus && <p className="mt-3 text-sm text-slate-700">{forgotStatus}</p>}
           </form>
+
+          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-slate-900">Support the project</p>
+            <p className="mt-1 text-sm leading-6 text-slate-600">
+              PlanHumans is free to use. If you find it useful, consider buying us a coffee to support development.
+            </p>
+            <a
+              href="https://buymeacoffee.com/planhumans"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex items-center gap-3 rounded-2xl border border-amber-200 bg-white px-4 py-3 shadow-sm"
+            >
+              <img
+                src="/qrcode.png"
+                alt="Buy us a coffee QR code"
+                className="h-24 w-auto rounded-lg object-contain"
+              />
+              <span className="text-sm font-medium text-slate-800 underline">buymeacoffee.com/planhumans</span>
+            </a>
+          </div>
         </section>
       </div>
     </main>

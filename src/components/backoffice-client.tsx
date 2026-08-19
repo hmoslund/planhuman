@@ -9,6 +9,7 @@ type UserRow = {
   email: string;
   country: string;
   emailVerified: boolean;
+  userNumber: number | null;
   isProtected: boolean;
   userType: string;
   donated: boolean;
@@ -87,6 +88,7 @@ export function BackofficeClient() {
           <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
             <thead className="bg-slate-50 text-slate-700">
               <tr>
+                <th className="px-4 py-3 font-semibold">User #</th>
                 <th className="px-4 py-3 font-semibold">Name</th>
                 <th className="px-4 py-3 font-semibold">Email</th>
                 <th className="px-4 py-3 font-semibold">Type</th>
@@ -99,6 +101,7 @@ export function BackofficeClient() {
             <tbody className="divide-y divide-slate-200 bg-white">
               {users.map((user) => (
                 <tr key={user.id} className={user.isProtected ? "bg-sky-50/60" : ""}>
+                  <td className="px-4 py-3">{user.userNumber ?? "—"}</td>
                   <td className="px-4 py-3">
                     {user.name || <span className="text-slate-400">—</span>}
                     {user.isProtected && (

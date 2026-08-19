@@ -24,6 +24,7 @@ export async function GET(request: Request) {
         email: entry.email,
         country: entry.country,
         emailVerified: entry.emailVerified,
+        userNumber: entry.userNumber,
         isProtected: isAdminEmail(entry.email),
         userType: entry.donated ? "Donor" : "Free",
         donated: entry.donated,

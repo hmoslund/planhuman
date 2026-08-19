@@ -19,6 +19,8 @@ type UserProfile = {
   currency: string;
   emailVerified: boolean;
   isAdmin: boolean;
+  donated: boolean;
+  userNumber: number | null;
 };
 
 type CountryCode = "US" | "UK" | "DK" | "SE" | "NO" | "FI";
@@ -663,7 +665,7 @@ Begin your response with Section 1.
               <p className="text-sm font-medium uppercase tracking-[0.25em] text-slate-500">Financial planner dashboard</p>
               <h1 className="mt-2 text-3xl font-semibold text-slate-900">{user?.name ?? "Your wealth planner"}</h1>
               <p className="mt-2 text-sm text-slate-600">
-                {user?.country ?? "DK"} • {currency} • {user?.email ?? ""}
+                {user?.country ?? "DK"} • {currency} • User #{user?.userNumber ?? "—"} • {user?.email ?? ""}
               </p>
             </div>
             </div>
@@ -694,6 +696,31 @@ Begin your response with Section 1.
             </div>
           </div>
         </header>
+
+        {!user?.donated && (
+          <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
+            <p className="text-sm font-medium text-amber-700">Support PlanHumans</p>
+            <p className="mt-1 text-base font-semibold text-slate-900">
+              You are a non paying user — consider to buy us a coffee to support.
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              Your support keeps every part of this service free to use. Scan the QR code below or tap the image to buy us a coffee.
+            </p>
+            <a
+              href="https://buymeacoffee.com/planhumans"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 inline-flex items-center gap-3 rounded-2xl border border-amber-200 bg-white px-4 py-3 shadow-sm"
+            >
+              <img
+                src="/qrcode.png"
+                alt="Buy us a coffee QR code"
+                className="h-28 w-auto rounded-lg object-contain"
+              />
+              <span className="text-sm font-medium text-slate-800 underline">buymeacoffee.com/planhumans</span>
+            </a>
+          </div>
+        )}
 
         <section className="grid gap-4">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -849,7 +876,7 @@ Begin your response with Section 1.
               <p className="text-sm font-medium text-violet-500">AI</p>
               <h2 className="mt-1 text-lg font-semibold text-violet-900">AI guided advisory</h2>
               <p className="mt-2 text-sm leading-6 text-violet-700/80">
-                Build your AI prompt, copy the ai-text and paste into ChatGpt.com or any other AI agents.
+                Build your AI prompt. You can copy the ai-text and paste into ChatGpt.com or any other AI agents, and continue your dialogue with the AI agent of your choise
               </p>
               <textarea
                 rows={8}

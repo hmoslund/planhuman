@@ -34,6 +34,8 @@ export async function POST(request: Request) {
         currency: normalizeCurrency(user.currency),
         emailVerified: user.emailVerified,
         isAdmin: user.isAdmin,
+        donated: user.donated,
+        userNumber: user.userNumber,
       },
     });
 

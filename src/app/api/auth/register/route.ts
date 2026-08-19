@@ -27,6 +27,9 @@ export async function POST(request: Request) {
     const currency = getCurrency(normalizedCountry);
     const isAdmin = isAdminEmail(normalizedEmail) || normalizedEmail.endsWith("@wealthplanner.com");
 
+    const latest = await prisma.user.aggregate({ _max: { userNumber: true } });
+    const userNumber = (latest._max.userNumber ?? 499) + 1;
+
     const user = await prisma.user.create({
       data: {
         name: name?.trim() || null,
@@ -34,6 +37,7 @@ export async function POST(request: Request) {
         passwordHash,
         country: normalizedCountry,
         currency,
+        userNumber,
         isAdmin,
       },
     });
@@ -65,6 +69,7 @@ export async function POST(request: Request) {
         currency: user.currency,
         emailVerified: user.emailVerified,
         isAdmin: user.isAdmin,
+        userNumber: user.userNumber,
       },
     });
   } catch (error) {

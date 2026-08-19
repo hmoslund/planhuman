@@ -23,6 +23,8 @@ export async function GET(request: Request) {
         currency: normalizeCurrency(user.currency),
         emailVerified: user.emailVerified,
         isAdmin: user.isAdmin,
+        donated: user.donated,
+        userNumber: user.userNumber,
       },
       record: {
         id: record?.id ?? null,
