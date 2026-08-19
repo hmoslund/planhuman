@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { createSessionForUser, getCurrency, isAdminEmail, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { createSessionForUser, isAdminEmail, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { normalizeCurrency } from "@/lib/wealth";
 import prisma from "@/lib/prisma";
 
 export async function POST(request: Request) {
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
         email: user.email,
         name: user.name,
         country: user.country,
-        currency: getCurrency(user.country),
+        currency: normalizeCurrency(user.currency),
         emailVerified: user.emailVerified,
         isAdmin: user.isAdmin,
       },

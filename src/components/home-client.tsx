@@ -63,8 +63,13 @@ export function HomeClient() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f7f2ea,_#f5f7fb_55%,_#eef2ff)] p-6 text-slate-900">
       <div className="mx-auto flex max-w-6xl flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
         <section className="max-w-2xl rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
+          <img
+            src="/phlogo.png"
+            alt="PlanHumans"
+            className="mb-4 h-20 w-auto max-w-[240px] rounded-xl object-contain"
+          />
           <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-600">
-            Plan Human
+            PlanHumans
           </span>
           <h1 className="mt-5 text-4xl font-semibold tracking-tight text-slate-900 sm:text-5xl">
             A calm, human-first space for personal wealth planning.

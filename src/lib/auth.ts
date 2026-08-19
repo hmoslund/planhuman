@@ -63,7 +63,7 @@ export function getCurrency(country: string) {
   if (country === "US") return "USD";
   if (country === "UK") return "GBP";
   if (country === "FI") return "EUR";
-  if (country === "DK") return "DKR";
+  if (country === "DK") return "DKK";
   if (country === "SE") return "SEK";
   if (country === "NO") return "NOK";
   return country.toUpperCase();

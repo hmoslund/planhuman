@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { calculateWealth, createDefaultBlocks, getUserFromRequest, MAX_ROWS, normalizeBlockRows } from "@/lib/auth";
+import { DEFAULT_SETTINGS, normalizeCurrency, type PlannerSettings } from "@/lib/wealth";
 import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
@@ -11,6 +12,7 @@ export async function GET(request: Request) {
 
     const record = await prisma.wealthRecord.findFirst({ where: { userId: user.id } });
     const blocks = (record?.blocks as Record<string, unknown>) ?? createDefaultBlocks();
+    const settings = { ...DEFAULT_SETTINGS, ...((record?.settings as Record<string, unknown>) ?? {}) };
 
     return NextResponse.json({
       user: {
@@ -18,13 +20,14 @@ export async function GET(request: Request) {
         email: user.email,
         name: user.name,
         country: user.country,
-        currency: user.currency,
+        currency: normalizeCurrency(user.currency),
         emailVerified: user.emailVerified,
         isAdmin: user.isAdmin,
       },
       record: {
         id: record?.id ?? null,
         blocks,
+        settings,
         summary: calculateWealth(blocks as Record<string, Array<{ value?: number | null }>>),
       },
     });
@@ -51,11 +54,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Row limit reached (${MAX_ROWS}).` }, { status: 400 });
     }
 
+    const settings = { ...DEFAULT_SETTINGS, ...((body.settings as Partial<PlannerSettings>) ?? {}) };
+    const currency = body.currency ? normalizeCurrency(body.currency) : undefined;
+
+    if (currency) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { currency },
+      });
+    }
+
     const existing = await prisma.wealthRecord.findFirst({ where: { userId: user.id } });
     if (existing) {
       const updated = await prisma.wealthRecord.update({
         where: { id: existing.id },
-        data: { blocks: normalizedBlocks },
+        data: { blocks: normalizedBlocks, settings },
       });
 
       return NextResponse.json({
@@ -63,6 +76,7 @@ export async function POST(request: Request) {
         record: {
           id: updated.id,
           blocks: normalizedBlocks,
+          settings,
           summary: calculateWealth(normalizedBlocks as Record<string, Array<{ value?: number | null }>>),
         },
       });
@@ -72,6 +86,7 @@ export async function POST(request: Request) {
       data: {
         userId: user.id,
         blocks: normalizedBlocks,
+        settings,
       },
     });
 
@@ -80,6 +95,7 @@ export async function POST(request: Request) {
       record: {
         id: created.id,
         blocks: normalizedBlocks,
+        settings,
         summary: calculateWealth(normalizedBlocks as Record<string, Array<{ value?: number | null }>>),
       },
     });

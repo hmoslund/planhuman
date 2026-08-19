@@ -6,7 +6,7 @@ import * as am5 from "@amcharts/amcharts5";
 import * as am5xy from "@amcharts/amcharts5/xy";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import { curveMonotoneX } from "d3-shape";
-import { calculateWealth, getCurrency, toCurrency } from "@/lib/wealth";
+import { calculateWealth, getCountryInfo, normalizeCurrency, CURRENCIES, toCurrency } from "@/lib/wealth";
 
 type Row = { id: string; identifier: string; value: number; detail: string; completed?: boolean };
 type Blocks = Record<string, Row[]>;
@@ -191,6 +191,7 @@ export function DashboardClient() {
   const [saving, setSaving] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>("US");
+  const [currency, setCurrency] = useState<string>("DKK");
   const [showWealthPlanner, setShowWealthPlanner] = useState(true);
   const [showPensionPlanner, setShowPensionPlanner] = useState(true);
   const [birthYear, setBirthYear] = useState(1980);
@@ -219,6 +220,21 @@ export function DashboardClient() {
       const data = await response.json();
       setUser(data.user);
       setBlocks(data.record?.blocks ?? createEmptyBlocks());
+      if (data.user?.currency) setCurrency(normalizeCurrency(data.user.currency));
+
+      const s = data.record?.settings ?? {};
+      if (typeof s.birthYear === "number") setBirthYear(s.birthYear);
+      if (typeof s.retirementAge === "number") setRetirementAge(s.retirementAge);
+      if (typeof s.pensionYield === "number") setPensionYield(s.pensionYield);
+      if (typeof s.illiquidYield === "number") setIlliquidYield(s.illiquidYield);
+      if (typeof s.inflationRate === "number") setInflationRate(s.inflationRate);
+      if (typeof s.yearlyPensionSavings === "number") setYearlyPensionSavings(s.yearlyPensionSavings);
+      if (typeof s.pensionTaxRate === "number") setPensionTaxRate(s.pensionTaxRate);
+      if (typeof s.smoothingHorizontal === "number") setSmoothingHorizontal(s.smoothingHorizontal);
+      if (typeof s.smoothingVertical === "number") setSmoothingVertical(s.smoothingVertical);
+      if (typeof s.strokeWidth === "number") setStrokeWidth(s.strokeWidth);
+      if (typeof s.showWealthPlanner === "boolean") setShowWealthPlanner(s.showWealthPlanner);
+      if (typeof s.showPensionPlanner === "boolean") setShowPensionPlanner(s.showPensionPlanner);
     }
 
     loadData();
@@ -229,8 +245,6 @@ export function DashboardClient() {
 
   const eValue = useMemo(() => (blocks.E ?? []).reduce((total, row) => total + Number(row.value || 0), 0), [blocks.E]);
   const cValue = useMemo(() => (blocks.C ?? []).reduce((total, row) => total + Number(row.value || 0), 0), [blocks.C]);
-
-  const currency = useMemo(() => getCurrency(selectedCountry), [selectedCountry]);
 
   useEffect(() => {
     if (user && ["US", "UK", "DK", "SE", "NO", "FI"].includes(user.country) && user.country !== selectedCountry) {
@@ -480,11 +494,31 @@ useEffect(() => {
     const response = await fetch("/api/wealth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ blocks }),
+      body: JSON.stringify({
+        blocks,
+        currency,
+        settings: {
+          birthYear,
+          retirementAge,
+          pensionYield,
+          illiquidYield,
+          inflationRate,
+          yearlyPensionSavings,
+          pensionTaxRate,
+          smoothingHorizontal,
+          smoothingVertical,
+          strokeWidth,
+          showWealthPlanner,
+          showPensionPlanner,
+        },
+      }),
     });
     const data = await response.json();
     setSaving(false);
     setMessage(data.message ?? data.error ?? "Saved.");
+    if (data.record) {
+      setUser((prev) => (prev ? { ...prev, currency } : prev));
+    }
   }
 
   async function handleLogout() {
@@ -494,22 +528,23 @@ useEffect(() => {
 
   const buildAiPrompt = () => {
     const country = user?.country ?? selectedCountry;
+    const { name, language } = getCountryInfo(country);
     const sym = (() => {
-      switch (country) {
-        case "US":
+      switch (currency) {
+        case "USD":
           return "$";
-        case "UK":
+        case "GBP":
           return "£";
-        case "FI":
+        case "EUR":
           return "€";
-        case "DK":
+        case "DKK":
           return "DKK ";
-        case "SE":
+        case "SEK":
           return "SEK ";
-        case "NO":
+        case "NOK":
           return "NOK ";
         default:
-          return `${country} `;
+          return `${currency} `;
       }
     })();
 
@@ -555,6 +590,8 @@ useEffect(() => {
     return `You are an elite, highly pragmatic personal financial advisor and wealth manager. Your single mission is to deliver an objective, deeply actionable, and personalized analysis of my financial situation based strictly on the data provided below.
 
 Adopt a direct, encouraging, yet candid tone (like an experienced advisor speaking to a client). Focus on actionable strategy rather than generic advice.
+
+LANGUAGE: The entire answer must be written in this language: ${language} (Country: ${name}). Please respond fully in ${language} and write all currencies, examples and recommendations in that language.
 
 ==================================================
 1. CLIENT PROFILE & FINANCIAL DATA
@@ -616,14 +653,36 @@ Begin your response with Section 1.
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <header className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-3">
+              <img
+                src="/phlogo.png"
+                alt="PlanHumans logo"
+                className="h-14 w-auto max-w-[180px] rounded-xl object-contain"
+              />
             <div>
               <p className="text-sm font-medium uppercase tracking-[0.25em] text-slate-500">Financial planner dashboard</p>
               <h1 className="mt-2 text-3xl font-semibold text-slate-900">{user?.name ?? "Your wealth planner"}</h1>
               <p className="mt-2 text-sm text-slate-600">
-                {user?.country ?? "DK"} • {user?.currency ?? "kr"} • {user?.email ?? ""}
+                {user?.country ?? "DK"} • {currency} • {user?.email ?? ""}
               </p>
             </div>
-            <div className="flex gap-3">
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                <span className="font-medium">Currency</span>
+                <select
+                  className="bg-transparent outline-none"
+                  value={currency}
+                  onChange={(event) => setCurrency(event.target.value)}
+                  aria-label="Currency"
+                >
+                  {CURRENCIES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </label>
               {user?.isAdmin && (
                 <button className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700" onClick={() => router.push("/backoffice")}>
                   Back office
@@ -727,6 +786,33 @@ Begin your response with Section 1.
           </div>
 
           {message && <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{message}</p>}
+
+          <div className="rounded-[24px] border border-sky-200 bg-sky-50 p-5 shadow-sm">
+            <p className="text-sm font-medium text-sky-700">Wealth blocks guide</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">How to fill in your wealth blocks</h2>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <p className="text-sm leading-6 text-slate-600">
+                <span className="font-semibold text-slate-800">Assets (left blocks):</span> in each row, type the
+                name of the asset on the first line and its value on the second. For a stock, for example, write{" "}
+                <span className="font-medium text-slate-700">Apple Ltd.</span> as the name and what you own (shares,
+                amount) as the value.
+              </p>
+              <p className="text-sm leading-6 text-slate-600">
+                <span className="font-semibold text-slate-800">Debt blocks (right side):</span> type the name of the
+                credit company on the first line and the amount owed plus its interest rate on the second. For example{" "}
+                <span className="font-medium text-slate-700">Bank of America 4%</span>.
+              </p>
+              <p className="text-sm leading-6 text-slate-600">
+                <span className="font-semibold text-slate-800">Income &amp; expenses:</span> use monthly amounts, for
+                instance your net salary or rent. Goals can include a target value and a progress amount.
+              </p>
+              <p className="text-sm leading-6 text-slate-600">
+                You can add as many rows as you need with the <span className="font-medium text-slate-700">Add row</span>{" "}
+                button on each block. Nothing is kept until you press{" "}
+                <span className="font-medium text-slate-700">Save record</span> at the top.
+              </p>
+            </div>
+          </div>
 
           <div className="flex flex-col gap-4">
             <div className="grid gap-4 xl:grid-cols-2">
