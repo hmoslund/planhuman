@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "planhumans",
-  description: "A calm, human-first space for personal wealth planning.",
+  title: "WealthPlanner MVP",
+  description: "A calm personal wealth planning dashboard for everyday people.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

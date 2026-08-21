@@ -33,12 +33,6 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-# local database files (contain user data — never commit)
-*.db
-*.db-journal
-*.db-wal
-*.db-shm
-
 # vercel
 .vercel
 
