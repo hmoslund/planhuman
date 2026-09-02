@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
-import { createSessionForUser, isAdminEmail, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { createSessionForUser, isAdminEmail, normalizeAlias, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { normalizeCurrency } from "@/lib/wealth";
 import prisma from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
-    const normalizedEmail = String(email).trim().toLowerCase();
+    const { identifier, password } = await request.json();
+    const value = String(identifier ?? "").trim();
 
-    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!value || !password) {
+      return NextResponse.json({ error: "Alias or email, and password, are required." }, { status: 400 });
+    }
+
+    const user = value.includes("@")
+      ? await prisma.user.findUnique({ where: { email: value.toLowerCase() } })
+      : await prisma.user.findUnique({ where: { alias: normalizeAlias(value) } });
+
     if (!user) {
-      return NextResponse.json({ error: "No account found for that email." }, { status: 404 });
+      return NextResponse.json({ error: "No account found for that alias or email." }, { status: 404 });
     }
 
     const valid = await verifyPassword(password, user.passwordHash);
@@ -18,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Incorrect password." }, { status: 401 });
     }
 
-    if (isAdminEmail(user.email) && !user.isAdmin) {
+    if (user.email && isAdminEmail(user.email) && !user.isAdmin) {
       await prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
       user.isAdmin = true;
     }
@@ -29,6 +36,7 @@ export async function POST(request: Request) {
       user: {
         id: user.id,
         email: user.email,
+        alias: user.alias,
         name: user.name,
         country: user.country,
         currency: normalizeCurrency(user.currency),

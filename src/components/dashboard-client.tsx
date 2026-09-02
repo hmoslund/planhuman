@@ -13,7 +13,8 @@ type Blocks = Record<string, Row[]>;
 
 type UserProfile = {
   id: string;
-  email: string;
+  email: string | null;
+  alias: string | null;
   name: string | null;
   country: string;
   currency: string;
@@ -665,7 +666,7 @@ Begin your response with Section 1.
               <p className="text-sm font-medium uppercase tracking-[0.25em] text-slate-500">Financial planner dashboard</p>
               <h1 className="mt-2 text-3xl font-semibold text-slate-900">{user?.name ?? "Your wealth planner"}</h1>
               <p className="mt-2 text-sm text-slate-600">
-                {user?.country ?? "DK"} • {currency} • User #{user?.userNumber ?? "—"} • {user?.email ?? ""}
+                {user?.country ?? "DK"} • {currency} • User #{user?.userNumber ?? "—"} • {user?.email ?? user?.alias ?? ""}
               </p>
             </div>
             </div>

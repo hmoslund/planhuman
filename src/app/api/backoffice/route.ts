@@ -22,10 +22,11 @@ export async function GET(request: Request) {
         id: entry.id,
         name: entry.name,
         email: entry.email,
+        alias: entry.alias,
         country: entry.country,
         emailVerified: entry.emailVerified,
         userNumber: entry.userNumber,
-        isProtected: isAdminEmail(entry.email),
+        isProtected: Boolean(entry.email) && isAdminEmail(entry.email!),
         userType: entry.donated ? "Donor" : "Free",
         donated: entry.donated,
         donatedAt: entry.donatedAt,
@@ -93,7 +94,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
-    if (isAdminEmail(target.email)) {
+    if (target.email && isAdminEmail(target.email)) {
       return NextResponse.json({ error: "Admin user cannot be deleted." }, { status: 400 });
     }
 

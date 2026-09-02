@@ -18,6 +18,7 @@ export async function GET(request: Request) {
       user: {
         id: user.id,
         email: user.email,
+        alias: user.alias,
         name: user.name,
         country: user.country,
         currency: normalizeCurrency(user.currency),

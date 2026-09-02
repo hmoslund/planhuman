@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 type UserRow = {
   id: string;
   name: string | null;
-  email: string;
+  email: string | null;
+  alias: string | null;
   country: string;
   emailVerified: boolean;
   userNumber: number | null;
@@ -90,6 +91,7 @@ export function BackofficeClient() {
               <tr>
                 <th className="px-4 py-3 font-semibold">User #</th>
                 <th className="px-4 py-3 font-semibold">Name</th>
+                <th className="px-4 py-3 font-semibold">Alias</th>
                 <th className="px-4 py-3 font-semibold">Email</th>
                 <th className="px-4 py-3 font-semibold">Type</th>
                 <th className="px-4 py-3 font-semibold">Donated</th>
@@ -108,7 +110,8 @@ export function BackofficeClient() {
                       <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">Admin</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">{user.email}</td>
+                  <td className="px-4 py-3">{user.alias || <span className="text-slate-400">—</span>}</td>
+                  <td className="px-4 py-3">{user.email || <span className="text-slate-400">—</span>}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${user.donated ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
                       {user.userType}

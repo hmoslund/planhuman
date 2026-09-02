@@ -6,7 +6,8 @@ import prisma from "@/lib/prisma";
 
 export type AppUser = {
   id: string;
-  email: string;
+  email: string | null;
+  alias: string | null;
   name: string | null;
   country: string;
   currency: string;
@@ -59,6 +60,39 @@ export async function hashPassword(password: string) {
 
 export async function verifyPassword(password: string, hashValue: string) {
   return compare(password, hashValue);
+}
+
+export function normalizeAlias(alias: string) {
+  return String(alias).trim().toLowerCase();
+}
+
+const RECOVERY_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+// Generates a human-typeable, one-time recovery code. Only its hash is ever stored.
+export function generateRecoveryCode() {
+  const groups = 4;
+  const groupLength = 5;
+  const parts: string[] = [];
+
+  for (let g = 0; g < groups; g += 1) {
+    let part = "";
+    for (let i = 0; i < groupLength; i += 1) {
+      part += RECOVERY_CODE_ALPHABET[crypto.randomInt(RECOVERY_CODE_ALPHABET.length)];
+    }
+    parts.push(part);
+  }
+
+  return parts.join("-");
+}
+
+// Suggests available-looking alternatives when an alias is taken, so signup doesn't
+// become an enumeration oracle ("is X taken?" probed one alias at a time).
+export function suggestAliases(alias: string) {
+  const suffixes = new Set<string>();
+  while (suffixes.size < 3) {
+    suffixes.add(String(crypto.randomInt(1000, 9999)));
+  }
+  return Array.from(suffixes).map((suffix) => `${alias}${suffix}`);
 }
 
 export function getCurrency(country: string) {

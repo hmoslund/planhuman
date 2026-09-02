@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/reset-password?token=${token}`;
 
     await sendMail({
-      to: user.email,
+      to: normalizedEmail,
       subject: "Reset your WealthPlanner password",
       html: `<p>Use this link to reset your password: <a href="${resetUrl}">${resetUrl}</a></p>`,
     });
