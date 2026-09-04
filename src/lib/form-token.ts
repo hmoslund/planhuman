@@ -14,22 +14,40 @@ export function issueFormToken() {
 }
 
 export function verifyFormToken(token: unknown) {
-  if (typeof token !== "string") return false;
+  if (typeof token !== "string") {
+    console.error("[signup:form-token] missing or non-string token");
+    return false;
+  }
 
   const [timestamp, signature] = token.split(".");
-  if (!timestamp || !signature) return false;
+  if (!timestamp || !signature) {
+    console.error("[signup:form-token] malformed token (expected `timestamp.signature`)");
+    return false;
+  }
 
   const expected = crypto.createHmac("sha256", SECRET).update(timestamp).digest("hex");
   const signatureBuffer = Buffer.from(signature);
   const expectedBuffer = Buffer.from(expected);
 
   if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+    console.error("[signup:form-token] signature mismatch (forged/tampered token, or FORM_TOKEN_SECRET differs from the one that issued it)");
     return false;
   }
 
   const issuedAt = Number(timestamp);
-  if (!Number.isFinite(issuedAt)) return false;
+  if (!Number.isFinite(issuedAt)) {
+    console.error("[signup:form-token] non-numeric timestamp");
+    return false;
+  }
 
   const age = Date.now() - issuedAt;
-  return age >= MIN_AGE_MS && age <= MAX_AGE_MS;
+  if (age < MIN_AGE_MS) {
+    console.error(`[signup:form-token] submitted too fast: ${age}ms (min ${MIN_AGE_MS}ms)`);
+    return false;
+  }
+  if (age > MAX_AGE_MS) {
+    console.error(`[signup:form-token] token expired: ${age}ms old (max ${MAX_AGE_MS}ms)`);
+    return false;
+  }
+  return true;
 }

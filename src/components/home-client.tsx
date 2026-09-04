@@ -348,6 +348,9 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
                   placeholder="e.g. quiet-otter"
                   required
                 />
+                <p className="mt-1 text-xs text-slate-500">
+                  Lowercase letters, numbers, - or _ only — not an email address, so no @ or dots.
+                </p>
                 {aliasSuggestions.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {aliasSuggestions.map((suggestion) => (

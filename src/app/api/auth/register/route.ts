@@ -26,6 +26,7 @@ export async function POST(request: Request) {
     // Honeypot: a real visitor never fills this hidden field. Reject with the same
     // generic error other validation failures use, so it gives bots no signal.
     if (typeof website === "string" && website.trim().length > 0) {
+      console.error("[signup:honeypot] hidden field was filled — treating as bot");
       return NextResponse.json({ error: "Registration failed." }, { status: 400 });
     }
 

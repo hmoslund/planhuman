@@ -5,10 +5,19 @@ export async function verifyTurnstileToken(token: unknown, ip: string) {
 
   if (!secret) {
     // No key configured (e.g. local dev) — don't block signups in non-production.
-    return process.env.NODE_ENV !== "production";
+    const allow = process.env.NODE_ENV !== "production";
+    if (!allow) {
+      console.error("[signup:turnstile] TURNSTILE_SECRET_KEY is not set — blocking all signups in production");
+    }
+    return allow;
   }
 
-  if (typeof token !== "string" || !token) return false;
+  if (typeof token !== "string" || !token) {
+    console.error("[signup:turnstile] no token submitted by client (widget likely didn't render or wasn't completed)", {
+      ip,
+    });
+    return false;
+  }
 
   try {
     const response = await fetch(SITEVERIFY_URL, {
@@ -18,9 +27,16 @@ export async function verifyTurnstileToken(token: unknown, ip: string) {
     });
 
     const data = await response.json();
-    return data.success === true;
+    if (data.success !== true) {
+      console.error("[signup:turnstile] Cloudflare rejected the token", {
+        ip,
+        errorCodes: data["error-codes"],
+      });
+      return false;
+    }
+    return true;
   } catch (error) {
-    console.error("Turnstile verification failed", error);
+    console.error("[signup:turnstile] siteverify request threw", error);
     return false;
   }
 }

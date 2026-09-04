@@ -1,0 +1,7 @@
+# Local development database (runs via docker-compose.yml)
+DATABASE_URL="postgresql://postgres:localdevpassword@localhost:5432/planhuman"
+
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+
+# Secret for the BuyMeACoffee donation webhook (see /api/webhooks/buymeacoffee)
+BMAC_SECRET=
