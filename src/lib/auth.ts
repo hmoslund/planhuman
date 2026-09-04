@@ -17,6 +17,13 @@ export type AppUser = {
   userNumber: number | null;
 };
 
+// Session/reset/verification tokens are only ever stored as this hash, so a
+// leaked database read alone can't be replayed as a working session or link —
+// the raw token (held only by the client / sent only in the email) is required.
+export function hashToken(token: string) {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
 const SESSION_COOKIE_NAME = "wealth-session";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
@@ -137,7 +144,7 @@ export async function createSessionForUser(userId: string) {
   await prisma.session.create({
     data: {
       userId,
-      token,
+      token: hashToken(token),
       expiresAt,
     },
   });
@@ -153,7 +160,7 @@ export async function getUserFromRequest(request: Request) {
   if (!token) return null;
 
   const session = await prisma.session.findUnique({
-    where: { token },
+    where: { token: hashToken(token) },
     include: { user: true },
   });
 
@@ -171,7 +178,7 @@ export async function getCurrentUserFromCookies() {
   if (!token) return null;
 
   const session = await prisma.session.findUnique({
-    where: { token },
+    where: { token: hashToken(token) },
     include: { user: true },
   });
 
@@ -212,7 +219,7 @@ export async function issueVerificationToken(userId: string) {
   await prisma.emailVerificationToken.create({
     data: {
       userId,
-      token,
+      token: hashToken(token),
       expiresAt,
     },
   });
@@ -227,7 +234,7 @@ export async function issueResetToken(userId: string) {
   await prisma.passwordResetToken.create({
     data: {
       userId,
-      token,
+      token: hashToken(token),
       expiresAt,
     },
   });

@@ -1,9 +1,18 @@
 import { NextResponse } from "next/server";
 import { generateRecoveryCode, hashPassword, normalizeAlias, verifyPassword } from "@/lib/auth";
+import { checkInMemoryRateLimit, getClientIp } from "@/lib/rate-limit";
 import prisma from "@/lib/prisma";
+
+const MAX_ATTEMPTS = 10;
+const WINDOW_MS = 1000 * 60 * 15;
 
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    if (!checkInMemoryRateLimit(`recovery-reset:${ip}`, MAX_ATTEMPTS, WINDOW_MS)) {
+      return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
+    }
+
     const { alias, recoveryCode, password } = await request.json();
 
     if (!alias || !recoveryCode || !password) {

@@ -1,10 +1,28 @@
 import { NextResponse } from "next/server";
-import { createSessionForUser, isAdminEmail, normalizeAlias, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { createSessionForUser, hashPassword, isAdminEmail, normalizeAlias, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { checkInMemoryRateLimit, getClientIp } from "@/lib/rate-limit";
 import { normalizeCurrency } from "@/lib/wealth";
 import prisma from "@/lib/prisma";
 
+const MAX_LOGIN_ATTEMPTS = 10;
+const LOGIN_WINDOW_MS = 1000 * 60 * 5;
+
+// Used to run a bcrypt compare even when no account matches, so responding
+// "invalid" doesn't come back measurably faster than a real wrong-password
+// case — that timing gap would otherwise leak which aliases/emails exist.
+let dummyHashPromise: Promise<string> | null = null;
+function getDummyHash() {
+  if (!dummyHashPromise) dummyHashPromise = hashPassword("timing-safety-placeholder");
+  return dummyHashPromise;
+}
+
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    if (!checkInMemoryRateLimit(`login:${ip}`, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MS)) {
+      return NextResponse.json({ error: "Too many login attempts. Please try again later." }, { status: 429 });
+    }
+
     const { identifier, password } = await request.json();
     const value = String(identifier ?? "").trim();
 
@@ -16,13 +34,9 @@ export async function POST(request: Request) {
       ? await prisma.user.findUnique({ where: { email: value.toLowerCase() } })
       : await prisma.user.findUnique({ where: { alias: normalizeAlias(value) } });
 
-    if (!user) {
-      return NextResponse.json({ error: "No account found for that alias or email." }, { status: 404 });
-    }
-
-    const valid = await verifyPassword(password, user.passwordHash);
-    if (!valid) {
-      return NextResponse.json({ error: "Incorrect password." }, { status: 401 });
+    const valid = await verifyPassword(password, user?.passwordHash ?? (await getDummyHash()));
+    if (!user || !valid) {
+      return NextResponse.json({ error: "Invalid alias/email or password." }, { status: 401 });
     }
 
     if (user.email && isAdminEmail(user.email) && !user.isAdmin) {

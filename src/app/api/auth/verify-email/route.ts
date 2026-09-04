@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hashToken } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
@@ -10,7 +11,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "A verification token is required." }, { status: 400 });
     }
 
-    const verificationToken = await prisma.emailVerificationToken.findUnique({ where: { token } });
+    const verificationToken = await prisma.emailVerificationToken.findUnique({ where: { token: hashToken(token) } });
     if (!verificationToken || verificationToken.used || verificationToken.expiresAt < new Date()) {
       return NextResponse.json({ error: "This verification link is no longer valid." }, { status: 400 });
     }

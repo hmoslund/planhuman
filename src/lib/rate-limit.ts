@@ -21,3 +21,34 @@ export async function checkSignupRateLimit(ip: string) {
   await prisma.signupAttempt.create({ data: { ip } });
   return true;
 }
+
+// In-memory rate limiter for endpoints that don't need durability across restarts
+// (login, recovery, forgot-password) — mainly to blunt brute-force guessing and
+// bcrypt-compare CPU exhaustion from a flood of requests, not to survive a redeploy.
+type Bucket = { count: number; resetAt: number };
+const buckets = new Map<string, Bucket>();
+const SWEEP_INTERVAL_MS = 1000 * 60 * 10;
+let lastSweep = Date.now();
+
+function sweepExpiredBuckets(now: number) {
+  if (now - lastSweep < SWEEP_INTERVAL_MS) return;
+  lastSweep = now;
+  for (const [key, bucket] of buckets) {
+    if (bucket.resetAt < now) buckets.delete(key);
+  }
+}
+
+export function checkInMemoryRateLimit(key: string, max: number, windowMs: number) {
+  const now = Date.now();
+  sweepExpiredBuckets(now);
+
+  const bucket = buckets.get(key);
+  if (!bucket || bucket.resetAt < now) {
+    buckets.set(key, { count: 1, resetAt: now + windowMs });
+    return true;
+  }
+
+  if (bucket.count >= max) return false;
+  bucket.count += 1;
+  return true;
+}

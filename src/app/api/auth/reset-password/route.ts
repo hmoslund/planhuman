@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { hashPassword } from "@/lib/auth";
+import { hashPassword, hashToken } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function POST(request: Request) {
@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Token and password are required." }, { status: 400 });
     }
 
-    const resetToken = await prisma.passwordResetToken.findUnique({ where: { token } });
+    const resetToken = await prisma.passwordResetToken.findUnique({ where: { token: hashToken(token) } });
     if (!resetToken || resetToken.used || resetToken.expiresAt < new Date()) {
       return NextResponse.json({ error: "This reset link is no longer valid." }, { status: 400 });
     }

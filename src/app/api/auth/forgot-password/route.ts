@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import { issueResetToken } from "@/lib/auth";
+import { checkInMemoryRateLimit, getClientIp } from "@/lib/rate-limit";
 import prisma from "@/lib/prisma";
 import { sendMail } from "@/lib/email";
 
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 1000 * 60 * 60;
+
 export async function POST(request: Request) {
   try {
+    const ip = getClientIp(request);
+    if (!checkInMemoryRateLimit(`forgot-password:${ip}`, MAX_ATTEMPTS, WINDOW_MS)) {
+      return NextResponse.json({ message: "If the email exists, a reset link will be sent." });
+    }
+
     const { email } = await request.json();
     const normalizedEmail = String(email).trim().toLowerCase();
 
@@ -22,7 +31,7 @@ export async function POST(request: Request) {
       html: `<p>Use this link to reset your password: <a href="${resetUrl}">${resetUrl}</a></p>`,
     });
 
-    return NextResponse.json({ message: "If the email exists, a reset link will be sent.", resetUrl });
+    return NextResponse.json({ message: "If the email exists, a reset link will be sent." });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Password reset failed." }, { status: 500 });
