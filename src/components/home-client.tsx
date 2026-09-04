@@ -2,11 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import Script from "next/script";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 declare global {
   interface Window {
-    onTurnstileVerified?: (token: string) => void;
+    turnstile?: {
+      render: (
+        container: HTMLElement,
+        options: { sitekey: string; callback: (token: string) => void }
+      ) => string;
+    };
   }
 }
 
@@ -38,12 +43,23 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
   const [recoveryResetStatus, setRecoveryResetStatus] = useState<string | null>(null);
   const [recoveryResetReveal, setRecoveryResetReveal] = useState<string | null>(null);
 
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const [turnstileScriptLoaded, setTurnstileScriptLoaded] = useState(false);
+
+  // The register form (and its Turnstile container) only mounts once the user
+  // switches to the "register" tab, which is after the Turnstile script has
+  // already run its one-time implicit auto-render scan. So we render the
+  // widget explicitly, once the container exists and the script is ready.
   useEffect(() => {
-    window.onTurnstileVerified = (token: string) => setTurnstileToken(token);
-    return () => {
-      delete window.onTurnstileVerified;
-    };
-  }, []);
+    if (mode !== "register" || !turnstileSiteKey || !turnstileScriptLoaded) return;
+    const container = turnstileContainerRef.current;
+    if (!container || container.childElementCount > 0) return;
+
+    window.turnstile?.render(container, {
+      sitekey: turnstileSiteKey,
+      callback: (token: string) => setTurnstileToken(token),
+    });
+  }, [mode, turnstileSiteKey, turnstileScriptLoaded]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -180,7 +196,15 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_#f7f2ea,_#f5f7fb_55%,_#eef2ff)] p-6 text-slate-900">
-      {turnstileSiteKey && <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="afterInteractive" async defer />}
+      {turnstileSiteKey && (
+        <Script
+          src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit"
+          strategy="afterInteractive"
+          async
+          defer
+          onLoad={() => setTurnstileScriptLoaded(true)}
+        />
+      )}
       <div className="mx-auto flex max-w-6xl flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
         <section className="max-w-2xl rounded-3xl border border-slate-200 bg-white/80 p-8 shadow-[0_20px_80px_rgba(15,23,42,0.08)] backdrop-blur">
           <img
@@ -411,7 +435,7 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
                 aria-hidden="true"
               />
 
-              {turnstileSiteKey && <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-callback="onTurnstileVerified" />}
+              {turnstileSiteKey && <div ref={turnstileContainerRef} />}
 
               {status && <p className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">{status}</p>}
 
