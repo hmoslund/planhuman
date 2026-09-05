@@ -30,9 +30,14 @@ const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 export const MAX_ROWS = 400;
 
 const ADMIN_EMAILS = ["hmoslund@outlook.com"];
+const ADMIN_ALIASES = ["hmoslundoutlookcom"];
 
 export function isAdminEmail(email: string) {
   return ADMIN_EMAILS.includes(String(email).trim().toLowerCase());
+}
+
+export function isAdminAlias(alias: string) {
+  return ADMIN_ALIASES.includes(normalizeAlias(alias));
 }
 
 export function createDefaultBlocks() {

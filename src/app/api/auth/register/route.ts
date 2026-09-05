@@ -6,6 +6,7 @@ import {
   generateRecoveryCode,
   getCurrency,
   hashPassword,
+  isAdminAlias,
   normalizeAlias,
   setSessionCookie,
   suggestAliases,
@@ -97,6 +98,7 @@ export async function POST(request: Request) {
           country: normalizedCountry,
           currency,
           userNumber,
+          isAdmin: isAdminAlias(normalizedAlias),
         },
       });
     } catch (error) {

@@ -7,21 +7,21 @@ datasource db {
 }
 
 model User {
-  id                      String                  @id @default(cuid())
+  id                      String                   @id @default(cuid())
   name                    String?
-  email                   String?                 @unique
-  alias                   String?                 @unique
+  email                   String?                  @unique
+  alias                   String?                  @unique
   passwordHash            String
   recoveryCodeHash        String?
-  country                 String                  @default("DK")
-  currency                String                  @default("kr")
-  emailVerified           Boolean                 @default(false)
-  isAdmin                 Boolean                 @default(false)
-  donated                 Boolean                 @default(false)
+  country                 String                   @default("DK")
+  currency                String                   @default("kr")
+  emailVerified           Boolean                  @default(false)
+  isAdmin                 Boolean                  @default(false)
+  donated                 Boolean                  @default(false)
   donatedAt               DateTime?
   userNumber              Int?
-  createdAt               DateTime                @default(now())
-  updatedAt               DateTime                @updatedAt
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
   sessions                Session[]
   passwordResetTokens     PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
@@ -73,4 +73,15 @@ model SignupAttempt {
   createdAt DateTime @default(now())
 
   @@index([ip, createdAt])
+}
+
+// One sponsor slot per currency, shown to non-donor users on the dashboard.
+model Sponsor {
+  id        String   @id @default(cuid())
+  currency  String   @unique
+  link      String
+  logoData  String?
+  text      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

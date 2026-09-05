@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSessionForUser, hashPassword, isAdminEmail, normalizeAlias, setSessionCookie, verifyPassword } from "@/lib/auth";
+import { createSessionForUser, hashPassword, isAdminAlias, isAdminEmail, normalizeAlias, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { checkInMemoryRateLimit, getClientIp } from "@/lib/rate-limit";
 import { normalizeCurrency } from "@/lib/wealth";
 import prisma from "@/lib/prisma";
@@ -39,7 +39,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid alias/email or password." }, { status: 401 });
     }
 
-    if (user.email && isAdminEmail(user.email) && !user.isAdmin) {
+    const shouldBeAdmin = (user.email && isAdminEmail(user.email)) || (user.alias && isAdminAlias(user.alias));
+    if (shouldBeAdmin && !user.isAdmin) {
       await prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
       user.isAdmin = true;
     }

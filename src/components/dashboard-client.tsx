@@ -209,6 +209,7 @@ export function DashboardClient() {
   const [smoothingHorizontal, setSmoothingHorizontal] = useState(0.5);
   const [smoothingVertical, setSmoothingVertical] = useState(0.5);
   const [strokeWidth, setStrokeWidth] = useState(3);
+  const [sponsors, setSponsors] = useState<Record<string, { link: string; logoData: string | null; text: string | null }>>({});
   const retirementChartRef = useRef<HTMLDivElement | null>(null);
   const assetChartRef = useRef<HTMLDivElement | null>(null);
 
@@ -242,6 +243,19 @@ export function DashboardClient() {
 
     loadData();
   }, [router]);
+
+  useEffect(() => {
+    async function loadSponsors() {
+      const response = await fetch("/api/sponsors");
+      if (!response.ok) return;
+      const data = await response.json();
+      setSponsors(data.sponsors ?? {});
+    }
+
+    loadSponsors();
+  }, []);
+
+  const sponsor = sponsors[currency] ?? null;
 
   const summary = useMemo(() => calculateWealth(blocks), [blocks]);
   const topGoals = useMemo(() => (blocks.G ?? []).slice(0, 5), [blocks]);
@@ -699,27 +713,51 @@ Begin your response with Section 1.
         </header>
 
         {!user?.donated && (
-          <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
-            <p className="text-sm font-medium text-amber-700">Support PlanHumans</p>
-            <p className="mt-1 text-base font-semibold text-slate-900">
-              You are a non paying user — consider to buy us a coffee to support.
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              Your support keeps every part of this service free to use. Scan the QR code below or tap the image to buy us a coffee.
-            </p>
-            <a
-              href="https://buymeacoffee.com/planhumans"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-3 rounded-2xl border border-amber-200 bg-white px-4 py-3 shadow-sm"
-            >
-              <img
-                src="/qrcode.png"
-                alt="Buy us a coffee QR code"
-                className="h-28 w-auto rounded-lg object-contain"
-              />
-              <span className="text-sm font-medium text-slate-800 underline">buymeacoffee.com/planhumans</span>
-            </a>
+          <div className={`grid gap-4 ${sponsor ? "md:grid-cols-2" : ""}`}>
+            <div className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 shadow-sm">
+              <p className="text-sm font-medium text-amber-700">Support PlanHumans</p>
+              <p className="mt-1 text-base font-semibold text-slate-900">
+                You are a non paying user — consider to buy us a coffee to support.
+              </p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Your support keeps every part of this service free to use. Scan the QR code below or tap the image to buy us a coffee.
+              </p>
+              <a
+                href="https://buymeacoffee.com/planhumans"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-4 inline-flex items-center gap-3 rounded-2xl border border-amber-200 bg-white px-4 py-3 shadow-sm"
+              >
+                <img
+                  src="/qrcode.png"
+                  alt="Buy us a coffee QR code"
+                  className="h-28 w-auto rounded-lg object-contain"
+                />
+                <span className="text-sm font-medium text-slate-800 underline">buymeacoffee.com/planhumans</span>
+              </a>
+            </div>
+
+            {sponsor && (
+              <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm font-medium text-slate-500">Sponsored by</p>
+                <a
+                  href={sponsor.link}
+                  target="_blank"
+                  rel="noopener noreferrer sponsored"
+                  className="mt-3 flex items-center gap-3"
+                >
+                  {sponsor.logoData && (
+                    <img
+                      src={sponsor.logoData}
+                      alt="Sponsor logo"
+                      className="h-14 w-auto max-w-[180px] rounded-xl object-contain"
+                    />
+                  )}
+                  <span className="text-sm font-medium text-slate-800 underline">{sponsor.link.replace(/^https?:\/\//, "")}</span>
+                </a>
+                {sponsor.text && <p className="mt-3 text-sm leading-6 text-slate-600">{sponsor.text}</p>}
+              </div>
+            )}
           </div>
         )}
 
@@ -909,48 +947,10 @@ Begin your response with Section 1.
                   <p className="text-sm font-medium text-slate-500">Assets / liabilities balance overview</p>
                   <h2 className="text-lg font-semibold text-slate-900">Projection to retirement</h2>
                 </div>
-                <div className="text-sm text-slate-500">Pension and reserves</div>
+                <div className="text-sm text-slate-500">Reserves</div>
               </div>
               <div className="mt-5">
                 <div ref={assetChartRef} className="h-[320px]" />
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <label className="space-y-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">Horizontal smoothing</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={smoothingHorizontal}
-                    onChange={(event) => setSmoothingHorizontal(Number(event.target.value))}
-                    className="w-full"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">Vertical smoothing</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={smoothingVertical}
-                    onChange={(event) => setSmoothingVertical(Number(event.target.value))}
-                    className="w-full"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">Stroke width</span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={8}
-                    step={1}
-                    value={strokeWidth}
-                    onChange={(event) => setStrokeWidth(Number(event.target.value))}
-                    className="w-full"
-                  />
-                </label>
               </div>
             </div>
             )}
@@ -966,44 +966,6 @@ Begin your response with Section 1.
               </div>
               <div className="mt-5">
                 <div ref={retirementChartRef} className="h-[320px]" />
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <label className="space-y-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">Horizontal smoothing</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={smoothingHorizontal}
-                    onChange={(event) => setSmoothingHorizontal(Number(event.target.value))}
-                    className="w-full"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">Vertical smoothing</span>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={smoothingVertical}
-                    onChange={(event) => setSmoothingVertical(Number(event.target.value))}
-                    className="w-full"
-                  />
-                </label>
-                <label className="space-y-2 text-sm text-slate-600">
-                  <span className="font-medium text-slate-900">Stroke width</span>
-                  <input
-                    type="range"
-                    min={1}
-                    max={8}
-                    step={1}
-                    value={strokeWidth}
-                    onChange={(event) => setStrokeWidth(Number(event.target.value))}
-                    className="w-full"
-                  />
-                </label>
               </div>
             </div>
             )}

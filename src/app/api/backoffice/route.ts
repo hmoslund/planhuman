@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
-import { calculateWealth, getUserFromRequest, isAdminEmail } from "@/lib/auth";
+import { calculateWealth, getUserFromRequest, isAdminAlias, isAdminEmail } from "@/lib/auth";
 import prisma from "@/lib/prisma";
+
+function isProtectedAdmin(entry: { email: string | null; alias: string | null }) {
+  return (Boolean(entry.email) && isAdminEmail(entry.email!)) || (Boolean(entry.alias) && isAdminAlias(entry.alias!));
+}
 
 export async function GET(request: Request) {
   try {
@@ -21,12 +25,12 @@ export async function GET(request: Request) {
       return {
         id: entry.id,
         name: entry.name,
-        email: entry.email,
         alias: entry.alias,
         country: entry.country,
         emailVerified: entry.emailVerified,
         userNumber: entry.userNumber,
-        isProtected: Boolean(entry.email) && isAdminEmail(entry.email!),
+        createdAt: entry.createdAt,
+        isProtected: isProtectedAdmin(entry),
         userType: entry.donated ? "Donor" : "Free",
         donated: entry.donated,
         donatedAt: entry.donatedAt,
@@ -94,7 +98,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
-    if (target.email && isAdminEmail(target.email)) {
+    if (isProtectedAdmin(target)) {
       return NextResponse.json({ error: "Admin user cannot be deleted." }, { status: 400 });
     }
 

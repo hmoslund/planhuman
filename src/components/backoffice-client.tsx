@@ -2,20 +2,30 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { CURRENCIES } from "@/lib/wealth";
+
+const MAX_LOGO_BYTES = 500 * 1024;
+
+type SponsorDraft = { link: string; text: string; logoData: string | null };
+const EMPTY_SPONSOR_DRAFT: SponsorDraft = { link: "", text: "", logoData: null };
 
 type UserRow = {
   id: string;
   name: string | null;
-  email: string | null;
   alias: string | null;
   country: string;
   emailVerified: boolean;
   userNumber: number | null;
+  createdAt: string;
   isProtected: boolean;
   userType: string;
   donated: boolean;
   rowCount: number;
 };
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
 
 const MAX_ROWS = 400;
 
@@ -32,6 +42,67 @@ export function BackofficeClient() {
   const router = useRouter();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [sponsorDrafts, setSponsorDrafts] = useState<Record<string, SponsorDraft>>({});
+  const [sponsorMessage, setSponsorMessage] = useState<string | null>(null);
+  const [savingSponsor, setSavingSponsor] = useState<string | null>(null);
+
+  async function loadSponsors() {
+    const response = await fetch("/api/backoffice/sponsors");
+    if (!response.ok) return;
+    const data = await response.json();
+    const existing: Array<{ currency: string; link: string; text: string | null; logoData: string | null }> = data.sponsors ?? [];
+    const drafts: Record<string, SponsorDraft> = {};
+    for (const currency of CURRENCIES) {
+      const match = existing.find((s) => s.currency === currency);
+      drafts[currency] = match ? { link: match.link, text: match.text ?? "", logoData: match.logoData } : { ...EMPTY_SPONSOR_DRAFT };
+    }
+    setSponsorDrafts(drafts);
+  }
+
+  useEffect(() => {
+    loadSponsors();
+  }, []);
+
+  function updateSponsorDraft(currency: string, patch: Partial<SponsorDraft>) {
+    setSponsorDrafts((prev) => ({ ...prev, [currency]: { ...(prev[currency] ?? EMPTY_SPONSOR_DRAFT), ...patch } }));
+  }
+
+  function handleLogoChange(currency: string, file: File | null) {
+    if (!file) return;
+    if (file.size > MAX_LOGO_BYTES) {
+      setSponsorMessage(`Logo for ${currency} is too large (max 500KB).`);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => updateSponsorDraft(currency, { logoData: String(reader.result) });
+    reader.readAsDataURL(file);
+  }
+
+  async function saveSponsor(currency: string) {
+    const draft = sponsorDrafts[currency] ?? EMPTY_SPONSOR_DRAFT;
+    if (!draft.link.trim()) {
+      setSponsorMessage("Add a sponsor link before saving.");
+      return;
+    }
+
+    setSavingSponsor(currency);
+    const response = await fetch("/api/backoffice/sponsors", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currency, link: draft.link, text: draft.text, logoData: draft.logoData }),
+    });
+    const data = await response.json();
+    setSponsorMessage(data.message ?? data.error ?? "Action complete.");
+    setSavingSponsor(null);
+  }
+
+  async function removeSponsor(currency: string) {
+    if (!window.confirm(`Remove the sponsor for ${currency}?`)) return;
+    const response = await fetch(`/api/backoffice/sponsors?currency=${currency}`, { method: "DELETE" });
+    const data = await response.json();
+    setSponsorMessage(data.message ?? data.error ?? "Action complete.");
+    setSponsorDrafts((prev) => ({ ...prev, [currency]: { ...EMPTY_SPONSOR_DRAFT } }));
+  }
 
   async function loadUsers() {
     const response = await fetch("/api/backoffice");
@@ -92,7 +163,7 @@ export function BackofficeClient() {
                 <th className="px-4 py-3 font-semibold">User #</th>
                 <th className="px-4 py-3 font-semibold">Name</th>
                 <th className="px-4 py-3 font-semibold">Alias</th>
-                <th className="px-4 py-3 font-semibold">Email</th>
+                <th className="px-4 py-3 font-semibold">Created</th>
                 <th className="px-4 py-3 font-semibold">Type</th>
                 <th className="px-4 py-3 font-semibold">Donated</th>
                 <th className="px-4 py-3 font-semibold">Rows</th>
@@ -111,7 +182,7 @@ export function BackofficeClient() {
                     )}
                   </td>
                   <td className="px-4 py-3">{user.alias || <span className="text-slate-400">—</span>}</td>
-                  <td className="px-4 py-3">{user.email || <span className="text-slate-400">—</span>}</td>
+                  <td className="px-4 py-3">{formatDate(user.createdAt)}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${user.donated ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
                       {user.userType}
@@ -147,6 +218,81 @@ export function BackofficeClient() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold text-slate-900">Sponsors</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            One sponsor slot per currency. Shown to non-donor users on the dashboard, next to the &quot;Support PlanHumans&quot; box.
+          </p>
+          {sponsorMessage && (
+            <p className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{sponsorMessage}</p>
+          )}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {CURRENCIES.map((currency) => {
+              const draft = sponsorDrafts[currency] ?? EMPTY_SPONSOR_DRAFT;
+              return (
+                <div key={currency} className="rounded-2xl border border-slate-200 p-4">
+                  <p className="text-sm font-semibold text-slate-900">{currency}</p>
+
+                  <label className="mt-3 block text-xs font-medium text-slate-600">
+                    Sponsor link
+                    <input
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                      value={draft.link}
+                      onChange={(event) => updateSponsorDraft(currency, { link: event.target.value })}
+                      placeholder="https://sponsor.example.com"
+                    />
+                  </label>
+
+                  <label className="mt-2 block text-xs font-medium text-slate-600">
+                    Sponsor text
+                    <input
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                      value={draft.text}
+                      onChange={(event) => updateSponsorDraft(currency, { text: event.target.value })}
+                      placeholder="Short sponsor message"
+                    />
+                  </label>
+
+                  <label className="mt-2 block text-xs font-medium text-slate-600">
+                    Logo
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      className="mt-1 block w-full text-xs"
+                      onChange={(event) => handleLogoChange(currency, event.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                  {draft.logoData && (
+                    <img
+                      src={draft.logoData}
+                      alt={`${currency} sponsor logo preview`}
+                      className="mt-2 h-12 w-auto max-w-[140px] rounded-lg border border-slate-100 object-contain"
+                    />
+                  )}
+
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={savingSponsor === currency}
+                      onClick={() => saveSponsor(currency)}
+                    >
+                      {savingSponsor === currency ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      className="rounded-full border border-rose-200 px-3 py-1.5 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                      onClick={() => removeSponsor(currency)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </main>

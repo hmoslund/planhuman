@@ -36,9 +36,6 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
   const [recoveryReveal, setRecoveryReveal] = useState<string | null>(null);
   const [recoverySaved, setRecoverySaved] = useState(false);
 
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotStatus, setForgotStatus] = useState<string | null>(null);
-
   const [recoveryResetForm, setRecoveryResetForm] = useState({ alias: "", recoveryCode: "", password: "" });
   const [recoveryResetStatus, setRecoveryResetStatus] = useState<string | null>(null);
   const [recoveryResetReveal, setRecoveryResetReveal] = useState<string | null>(null);
@@ -105,18 +102,6 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
     }
 
     setRecoveryReveal(data.recoveryCode);
-  }
-
-  async function handleForgotPassword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setForgotStatus(null);
-    const response = await fetch("/api/auth/forgot-password", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: forgotEmail }),
-    });
-    const data = await response.json();
-    setForgotStatus(data.message ?? "Check your inbox for the reset link.");
   }
 
   async function handleRecoveryReset(event: FormEvent<HTMLFormElement>) {
@@ -321,14 +306,14 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
             <form className="mt-6 space-y-4" onSubmit={handleLogin}>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="identifier">
-                  Alias or email
+                  Alias
                 </label>
                 <input
                   id="identifier"
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none ring-0"
                   value={loginForm.identifier}
                   onChange={(event) => setLoginForm((value) => ({ ...value, identifier: event.target.value }))}
-                  placeholder="your-alias or you@example.com"
+                  placeholder="your-alias"
                   required
                 />
               </div>
@@ -448,24 +433,6 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
               </button>
             </form>
           )}
-
-          <form className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4" onSubmit={handleForgotPassword}>
-            <p className="text-sm font-semibold text-slate-900">Signed up with an email?</p>
-            <p className="mt-1 text-sm text-slate-600">We can email you a password reset link.</p>
-            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
-              <input
-                className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
-                value={forgotEmail}
-                onChange={(event) => setForgotEmail(event.target.value)}
-                placeholder="Email address"
-                type="email"
-              />
-              <button className="rounded-2xl border border-slate-300 px-4 py-3 font-medium text-slate-700" type="submit">
-                Send link
-              </button>
-            </div>
-            {forgotStatus && <p className="mt-3 text-sm text-slate-700">{forgotStatus}</p>}
-          </form>
 
           <form className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4" onSubmit={handleRecoveryReset}>
             <p className="text-sm font-semibold text-slate-900">Signed up with an alias?</p>
