@@ -48,7 +48,7 @@ const blockMeta = [
 ];
 
 // Blocks hidden behind the "show advanced" disclosure — rarely used by a salaried household.
-const ADVANCED_KEYS = ["B", "B2", "C2", "C3"];
+const ADVANCED_KEYS = ["B", "B2", "C3"];
 
 function getBlockCopy(key: string, language: CountryCode) {
   const fallback = blockMeta.find((meta) => meta.key === key) ?? blockMeta[0];
@@ -293,17 +293,17 @@ export function DashboardClient() {
 
   // Start with the two blocks every user can answer from memory, and which drive every
   // chart on the page. Then the balance sheet in liquidity order. Rarely-used blocks sit
-  // behind a disclosure; notes go last.
+  // behind a disclosure; pensions and notes sit together at the end.
   const pick = (keys: string[]) =>
     keys.map((key) => translatedBlockMeta.find((meta) => meta.key === key)).filter(Boolean) as typeof translatedBlockMeta;
 
   const rowStart = pick(["J", "K"]);
   const rowCash = pick(["A", "A2"]);
   const rowHome = pick(["D", "D2"]);
-  const rowLongTerm = pick(["C", "E"]);
+  const rowInvestments = pick(["C", "C2"]);
+  const rowPension = pick(["E", "H"]);
   const rowAdvanced = pick(ADVANCED_KEYS);
   const rowGoals = pick(["G"]);
-  const rowNotes = pick(["H"]);
 
   const advancedInUse = ADVANCED_KEYS.filter((key) => (blocks[key] ?? []).length > 0).length;
 
@@ -953,7 +953,7 @@ Begin your response with Section 1.
             <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionStart}</p>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowStart.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
               ))}
             </div>
 
@@ -961,17 +961,22 @@ Begin your response with Section 1.
             <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionBalance}</p>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowCash.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowHome.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
-              {rowLongTerm.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
+              {rowInvestments.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+              ))}
+            </div>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {rowPension.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
               ))}
             </div>
 
@@ -996,21 +1001,14 @@ Begin your response with Section 1.
             {showAdvanced && (
               <div className="grid gap-4 xl:grid-cols-2">
                 {rowAdvanced.map((meta) => (
-                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
+                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
                 ))}
               </div>
             )}
 
             <div className="grid gap-4">
               {rowGoals.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
-              ))}
-            </div>
-
-            <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionNotes}</p>
-            <div className="grid gap-4">
-              {rowNotes.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
               ))}
             </div>
 
@@ -1271,10 +1269,9 @@ type BlockCardProps = {
   deleteRow: (blockKey: string, rowId: string) => void;
   toggleComplete: (blockKey: string, rowId: string) => void;
   currency: string;
-  detailPlaceholder?: string;
 };
 
-function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency, detailPlaceholder }: BlockCardProps) {
+function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency }: BlockCardProps) {
   const rows = blocks[meta.key] ?? [];
   const isGoalBlock = meta.key === "G";
   const isLiabilityBlock = ["A2", "B2", "C2", "C3", "D2"].includes(meta.key);
@@ -1398,7 +1395,7 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                 </button>
               </div>
             ) : (
-              <div className={`grid gap-3 ${isGoalBlock ? "md:grid-cols-[auto_1.2fr_0.55fr_0.55fr_auto]" : "md:grid-cols-[1.2fr_0.5fr_1fr_auto]"}`}>
+              <div className={`grid gap-3 ${isGoalBlock ? "md:grid-cols-[auto_1.2fr_0.55fr_0.55fr_auto]" : "md:grid-cols-[1.2fr_0.5fr_auto]"}`}>
                 {isGoalBlock && (
                   <label className="flex items-center justify-center">
                     <input
@@ -1436,15 +1433,6 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                     value={row.detail ?? ""}
                     onChange={(event) => updateRow(meta.key, row.id, "detail", event.target.value)}
                     placeholder="Status"
-                  />
-                )}
-                {!isGoalBlock && (
-                  // Already carried into the AI prompt by buildAiPrompt — it just had no input.
-                  <input
-                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
-                    value={row.detail ?? ""}
-                    onChange={(event) => updateRow(meta.key, row.id, "detail", event.target.value)}
-                    placeholder={detailPlaceholder ?? "Provider, rate, notes (optional)"}
                   />
                 )}
                 <button className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700" onClick={() => deleteRow(meta.key, row.id)}>
