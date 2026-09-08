@@ -7,6 +7,7 @@ import * as am5xy from "@amcharts/amcharts5/xy";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import { curveMonotoneX } from "d3-shape";
 import { calculateWealth, getCountryInfo, normalizeCurrency, CURRENCIES, toCurrency } from "@/lib/wealth";
+import { blockTranslations, guideCopy, type BlockCopy, type CountryCode } from "@/lib/block-copy";
 
 type Row = { id: string; identifier: string; value: number; detail: string; completed?: boolean };
 type Blocks = Record<string, Row[]>;
@@ -24,141 +25,56 @@ type UserProfile = {
   userNumber: number | null;
 };
 
-type CountryCode = "US" | "UK" | "DK" | "SE" | "NO" | "FI";
-
 const MAX_ROWS = 400;
 
+// Render order is defined by the row groups inside DashboardClient, not by this array.
+// This is the key list plus an English fallback used only if a key is missing from block-copy.ts.
 const blockMeta = [
-  { key: "A", title: "Highly liquid assets", blurb: "Cash, savings and readily accessible assets" },
-  { key: "A2", title: "Short term debt", blurb: "Short term borrowing and credit balance" },
-  { key: "B", title: "Less liquid assets", blurb: "Assets less liquid and debtors" },
-  { key: "B2", title: "Short term debt", blurb: "Personal debt and current obligations" },
-  { key: "C", title: "Longer term investments", blurb: "Real estate and alternative assets" },
-  { key: "C2", title: "Debt linked to long-term assets", blurb: "Long-term debt obligations" },
-  { key: "H", title: "My notes", blurb: "Personal notes for the planner" },
-  { key: "C3", title: "Potential tax liability", blurb: "Tax linked to long-term investments" },
-  { key: "D", title: "Personal home and lifestyle assets", blurb: "Private home and personal assets" },
-  { key: "D2", title: "Mortgage and personal debt", blurb: "Mortgage and debt linked to personal assets" },
-  { key: "E", title: "Pension and reserves", blurb: "Retirement and precautionary reserves" },
-  { key: "J", title: "Salary and income", blurb: "Monthly salary or income" },
-  { key: "K", title: "Monthly expenses", blurb: "Regular household expenses" },
-  { key: "G", title: "Goals", blurb: "Short and long-term ambitions with target values" },
-  { key: "I", title: "My notes", blurb: "Personal notes for the planner" },
+  { key: "A", title: "Cash & instant-access savings", blurb: "Money you could spend this week." },
+  { key: "A2", title: "Credit cards & short-term debt", blurb: "Balances on cards and flexible credit." },
+  { key: "B", title: "Locked savings & money owed to you", blurb: "Yours, but weeks or months away." },
+  { key: "B2", title: "Loans & bills you owe", blurb: "Money you already owe someone." },
+  { key: "C", title: "Investments", blurb: "Money invested to grow over years." },
+  { key: "C2", title: "Debt against investments", blurb: "Borrowing secured on your investments." },
+  { key: "C3", title: "Tax if you sold (optional)", blurb: "Estimated tax on unrealised gains." },
+  { key: "D", title: "Your home & belongings", blurb: "What they would realistically sell for today." },
+  { key: "D2", title: "Mortgage & loans on what you own", blurb: "Balance outstanding, not the payment." },
+  { key: "E", title: "Pensions", blurb: "Retirement pots with a balance." },
+  { key: "J", title: "Monthly income", blurb: "What lands in your account each month." },
+  { key: "K", title: "Monthly outgoings", blurb: "What leaves your account each month." },
+  { key: "G", title: "Goals", blurb: "What you are saving towards." },
+  { key: "H", title: "My notes", blurb: "Anything the numbers do not capture." },
+  { key: "I", title: "My notes", blurb: "Anything the numbers do not capture." },
 ];
 
-const blockTranslations: Record<CountryCode, Record<string, { headline: string; subtitle: string }>> = {
-  US: {
-    A: { headline: "Highly Liquid Assets", subtitle: "Cash, savings and readily accessible assets" },
-    A2: { headline: "Short-Term Debt", subtitle: "Short-term borrowing and credit balance" },
-    B: { headline: "Short-Term Receivables & Locked Savings", subtitle: "Certificates of Deposit (CDs), Money owed to you by friends/family/business, Short-term private loans, Pending payouts" },
-    B2: { headline: "Personal Debt & Current Obligations", subtitle: "Personal loans, Outstanding medical bills, Tax bills due this year, Unpaid invoices" },
-    C: { headline: "Longer-Term Investments", subtitle: "Stock portfolio (ETFs, index funds), Brokerage accounts, Rental properties, Crypto, Private equity, Angel investments, Gold/Commodities" },
-    C2: { headline: "Debt Linked to Long-Term Assets", subtitle: "Investment property mortgages, Investment margin debt, Commercial real estate loans" },
-    C3: { headline: "Potential Tax Liability", subtitle: "Capital gains tax on unrealized stock gains, Deferred taxes on property sales, Exit taxes" },
-    D: { headline: "Personal Home & Lifestyle Assets", subtitle: "Primary residence valuation, Cars/Vehicles, Jewelry, Fine art, Boats/RVs, Collectibles" },
-    D2: { headline: "Mortgage & Personal Debt", subtitle: "Primary residence mortgage, Auto loans, Boat/RV financing, Home equity loans (HELOC)" },
-    E: { headline: "Pension & Reserves", subtitle: "Pension funds, Corporate pensions, State pension estimates, Locked funds" },
-    J: { headline: "Salary & Income", subtitle: "Monthly net salary, Freelance/Side-gig income, Rental income, Dividends, Bonuses" },
-    K: { headline: "Monthly Expenses", subtitle: "Rent, Grocery budget, Utilities, Subscriptions, Insurance , Dining out" },
-    G: { headline: "Goals", subtitle: "Short and long-term ambitions with target values" },
-    H: { headline: "My notes", subtitle: "Personal notes for the planner" },
-    I: { headline: "My notes", subtitle: "Personal notes for the planner" },
-  },
-  UK: {
-    A: { headline: "Highly Liquid Assets", subtitle: "Cash, savings, stocks and shares, and readily accessible assets" },
-    A2: { headline: "Short-Term Debt", subtitle: "Short-term borrowing and credit card balances" },
-    B: { headline: "Short-Term Receivables & Fixed Savings", subtitle: "Deposits, money owed to you, short-term private loans, pending payouts" },
-    B2: { headline: "Personal Debt & Current Liabilities", subtitle: "Personal loans, outstanding medical bills, tax liabilities due this year, unpaid invoices" },
-    C: { headline: "Long-Term Investments", subtitle: "Share portfolio, investment accounts, buy-to-let properties, crypto, private equity" },
-    C2: { headline: "Debt Linked to Long-Term Assets", subtitle: "Buy-to-let mortgages, investment debt, commercial property loans" },
-    C3: { headline: "Potential Tax Liabilities", subtitle: "Capital gains tax on unrealised share gains, deferred tax" },
-    D: { headline: "Main Residence & Lifestyle Assets", subtitle: "Main residence valuation, vehicles, jewellery, collectibles" },
-    D2: { headline: "Mortgages & Personal Debt", subtitle: "Main residence mortgage, auto loans, other loans" },
-    E: { headline: "Pensions & Reserves", subtitle: "Pension funds, workplace pensions, State Pension, other funds" },
-    J: { headline: "Salary & Income", subtitle: "Monthly net salary, other income, rental income, dividends, bonuses" },
-    K: { headline: "Monthly Expenses", subtitle: "Rent, groceries, utilities, subscriptions, insurance, entertainment, transport, travel, childcare, healthcare" },
-    G: { headline: "Goals", subtitle: "Short and long-term ambitions with target values" },
-    H: { headline: "My notes", subtitle: "Personal notes for the planner" },
-    I: { headline: "My notes", subtitle: "Personal notes for the planner" },
-  },
-  DK: {
-    A: { headline: "Meget likvide aktiver", subtitle: "Kontanter, opsparing, aktier og let tilgængelige aktiver" },
-    A2: { headline: "Kortfristet gæld", subtitle: "Kortfristede lån og kassekredit/kreditkortgæld" },
-    B: { headline: "Kortfristede tilgodehavender & bundet opsparing", subtitle: "Depositum, tilgodehavender, kortfristede private lån, afventende udbetalinger" },
-    B2: { headline: "Personlig gæld & løbende forpligtelser", subtitle: "Forbrugslån, udestående lægeregninger, restskat for indeværende år, ubetalte regninger" },
-    C: { headline: "Langsigtede investeringer", subtitle: "Aktieportefølje, depotkonti, udlejningsejendomme, krypto, unoterede aktier" },
-    C2: { headline: "Gæld knyttet til langsigtede aktiver", subtitle: "Investeringsrealkreditlån, investeringsgæld, erhvervsejendomslån" },
-    C3: { headline: "Latent skatteforpligtelse", subtitle: "Kapitalgevinstskat af urealiserede aktiegevinster, udskudt skat" },
-    D: { headline: "Primær bolig & livsstilsaktiver", subtitle: "Værdi af primær bolig, køretøjer, smykker, samlerobjekter" },
-    D2: { headline: "Realkredit- & forbrugsgæld", subtitle: "Realkreditlån i primær bolig, billån, øvrige lån" },
-    E: { headline: "Pension & reserver", subtitle: "Pensionsopsparing, arbejdsmarkedspension, folkepension, andre fonde" },
-    J: { headline: "Løn & indkomst", subtitle: "Månedlig nettoløn, anden indkomst, lejeindtægt, udbytte, bonusser" },
-    K: { headline: "Månedlige udgifter", subtitle: "Husleje, dagligvarer, forbrugsafgifter, abonnementer, forsikring, underholdning, transport, rejser, børn, helbred" },
-    G: { headline: "Mål", subtitle: "Kort- og langsigtede ambitioner med målværdier" },
-    H: { headline: "Mine noter", subtitle: "Personlige noter til planlæggeren" },
-    I: { headline: "Mine noter", subtitle: "Personlige noter til planlæggeren" },
-  },
-  SE: {
-    A: { headline: "Höglikvida tillgångar", subtitle: "Kontanter, sparande, aktier och lättillgängliga tillgångar" },
-    A2: { headline: "Kortfristiga skulder", subtitle: "Kortfristiga lån och kreditkortsskulder" },
-    B: { headline: "Kortfristiga fordringar & bundet sparande", subtitle: "Depositioner, fordringar, kortfristiga privatlån, väntande utbetalningar" },
-    B2: { headline: "Personliga skulder & löpande förpliktelser", subtitle: "Privatlån/blankolån, obetalda vårdräkningar, kvarskatt för året, obetalda räkningar" },
-    C: { headline: "Långsiktiga investeringar", subtitle: "Aktieportfölj, ISK/aktiedepåer, hyresfastigheter, krypto, onoterade aktier" },
-    C2: { headline: "Skulder kopplade till långsiktiga tillgångar", subtitle: "Investeringslån, fastighetslån för uthyrning, kommersiella fastighetslån" },
-    C3: { headline: "Latent skatteskuld", subtitle: "Kapitalvinstskatt på orealiserade aktievinster, uppskjuten skatt" },
-    D: { headline: "Egen bostad & livsstilstillgångar", subtitle: "Värdering av permanentbostad, fordon, smycken, samlarobjekt" },
-    D2: { headline: "Bolån & privatlån", subtitle: "Bolån på permanentbostad, billån, övriga lån" },
-    E: { headline: "Pension & reserver", subtitle: "Pensionsfonder, tjänstepension, allmän pension, övriga fonder" },
-    J: { headline: "Lön & inkomster", subtitle: "Månatlig nettolön, övriga inkomster, hyresinkomster, aktieutdelningar, bonusar" },
-    K: { headline: "Månatliga utgifter", subtitle: "Hyra, livsmedel, driftkostnader/el & vatten, abonnemang, försäkringar, nöjen, transport, resor, barn, hälsa" },
-    G: { headline: "Mål", subtitle: "Kortsiktiga och långsiktiga ambitioner med målbelopp" },
-    H: { headline: "Mina anteckningar", subtitle: "Personliga anteckningar för planen" },
-    I: { headline: "Mina anteckningar", subtitle: "Personliga anteckningar för planen" },
-  },
-  NO: {
-    A: { headline: "Svært likvide eiendeler", subtitle: "Kontanter, sparing, aksjer og lett tilgjengelige eiendeler" },
-    A2: { headline: "Kortsiktig gjeld", subtitle: "Kortsiktige lån og kredittkortgjeld" },
-    B: { headline: "Kortsiktige fordringer & bundet sparing", subtitle: "Depositum, tilgodehavender, kortsiktige private lån, avventende utbetalinger" },
-    B2: { headline: "Personlig gjeld & løpende forpliktelser", subtitle: "Forbrukslån, utestående legeregninger, restskatt for inneværende år, ubetalte regninger" },
-    C: { headline: "Langsiktige investeringer", subtitle: "Aksjeportefølje, aksjesparekonto (ASK), utleieeiendom, krypto, unoterte aksjer" },
-    C2: { headline: "Gjeld knyttet til langsiktige eiendeler", subtitle: "Investeringslån, sekundærboliglån, næringseiendomslån" },
-    C3: { headline: "Latent skatteforpliktelse", subtitle: "Gevinstskatt på urealiserte aksjegevinster, utsatt skatt" },
-    D: { headline: "Primærbolig & livsstilseiendeler", subtitle: "Verdi på primærbolig, kjøretøy, smykker, samleobjekter" },
-    D2: { headline: "Boliglån & personlig gjeld", subtitle: "Boliglån på primærbolig, billån, andre lån" },
-    E: { headline: "Pensjon & reserver", subtitle: "Pensjonssparing, tjenestepensjon, alderspensjon fra folketrygden, andre fond" },
-    J: { headline: "Lønn & inntekt", subtitle: "Månedlig nettolønn, annen inntekt, leieinntekt, aksjeutbytte, bonuser" },
-    K: { headline: "Månedlige udgifter", subtitle: "Husleie, dagligvarer, strøm/kommunale avgifter, abonnementer, forsikring, underholdning, transport, reiser, barn, helse" },
-    G: { headline: "Mål", subtitle: "Kort- og langsiktige ambisjoner med målverdier" },
-    H: { headline: "Mine notater", subtitle: "Personlige notater for planleggeren" },
-    I: { headline: "Mine notater", subtitle: "Personlige notater for planleggeren" },
-  },
-  FI: {
-    A: { headline: "Erittäin likvidit varat", subtitle: "Käteinen, säästöt, osakkeet ja helposti realisoitavat varat" },
-    A2: { headline: "Lyhytaikaiset velat", subtitle: "Lyhytaikaiset lainat ja luottokorttivelat" },
-    B: { headline: "Lyhytaikaiset saamiset & sidotut säästöt", subtitle: "Takuuvuokrat/vakuudet, saamiset, lyhytaikaiset yksityislainat, odotettavissa olevat maksut" },
-    B2: { headline: "Henkilökohtaiset velat & juoksevat velvoitteet", subtitle: "Kulutusluotot, erääntyvät terveydenhuoltomaksut, kuluvan vuoden jäännösverot, maksamattomat laskut" },
-    C: { headline: "Pitkäaikaiset sijoitukset", subtitle: "Osakesalkku, osakesäästötilit/arvo-osuustilit, sijoitusasunnot, kryptovaluutat, listaamattomat osakkeet" },
-    C2: { headline: "Pitkäaikaiseen omaisuuteen kohdistuvat velat", subtitle: "Sijoitusasuntolainat, sijoitusvelka, liikekiinteistölainat" },
-    C3: { headline: "Mahdollinen verovelka", subtitle: "Unrealisoituneiden osakevoittojen luovutusvoittovero, lykätty vero" },
-    D: { headline: "Vakituinen asunto & elämäntapaomaisuus", subtitle: "Vakituisen asunnon arvo, ajoneuvot, korut, keräilykohteet" },
-    D2: { headline: "Asuntolaina & muut henkilökohtaiset velat", subtitle: "Vakituisen asunnon asuntolaina, autolainat, muut laidat" },
-    E: { headline: "Eläkkeet & puskurirahastot", subtitle: "Eläkerahastot, työeläke, kansaneläke, muut rahastot" },
-    J: { headline: "Palkka & tulot", subtitle: "Kuukausittainen nettopalkka, muut tulot, vuokratulot, osingot, bonukset" },
-    K: { headline: "Kuukausittaiset menot", subtitle: "Vuokra, elintarvikkeet, asumismenot/sähkö & vesi, tilaukset, vakuutukset, viihde, liikkuminen, matkustus, lapset, terveys" },
-    G: { headline: "Tavoitteet", subtitle: "Lyhyen ja pitkän aikavälin tavoitteet ja summat" },
-    H: { headline: "Muistiinpanot", subtitle: "Henkilökohtaiset muistiinpanot suunnittelijalle" },
-    I: { headline: "Muistiinpanot", subtitle: "Henkilökohtaiset muistiinpanot suunnittelijalle" },
-  },
-};
+// Blocks hidden behind the "show advanced" disclosure — rarely used by a salaried household.
+const ADVANCED_KEYS = ["B", "B2", "C2", "C3"];
 
 function getBlockCopy(key: string, language: CountryCode) {
   const fallback = blockMeta.find((meta) => meta.key === key) ?? blockMeta[0];
-  const translation = blockTranslations[language][key];
-  return { title: translation?.headline ?? fallback.title, blurb: translation?.subtitle ?? fallback.blurb };
+  const translation: BlockCopy | undefined = blockTranslations[language]?.[key] ?? blockTranslations.UK?.[key];
+  return {
+    title: translation?.headline ?? fallback.title,
+    blurb: translation?.subtitle ?? fallback.blurb,
+    examples: translation?.examples,
+    notHere: translation?.notHere,
+    tip: translation?.tip,
+    placeholder: translation?.placeholder,
+  };
+}
+
+function getGuideCopy(language: CountryCode) {
+  return { ...guideCopy.UK, ...(guideCopy[language] ?? {}) };
 }
 
 function sanitizeNumericInput(value: string) {
-  return value.replace(/[^0-9-]/g, "").slice(0, 9);
+  // Digits only, with an optional single leading minus. Keeping "-" anywhere in the
+  // string produced values like "12-000" -> Number(...) -> NaN, which then spread
+  // through every total on the dashboard.
+  const negative = value.trim().startsWith("-");
+  const digits = value.replace(/[^0-9]/g, "").slice(0, 9);
+  if (!digits) return "";
+  return negative ? `-${digits}` : digits;
 }
 
 function sanitizeNumericPercent(value: string) {
@@ -203,7 +119,8 @@ export function DashboardClient() {
   const [illiquidYield, setIlliquidYield] = useState(4);
   const [inflationRate, setInflationRate] = useState(2);
   const [yearlyPensionSavings, setYearlyPensionSavings] = useState(10000);
-  const [pensionTaxRate, setPensionTaxRate] = useState(25);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [projectionOverrides, setProjectionOverrides] = useState<Record<number, number>>({});
   const [assetProjectionOverrides, setAssetProjectionOverrides] = useState<Record<number, number>>({});
   const [smoothingHorizontal, setSmoothingHorizontal] = useState(0.5);
@@ -233,7 +150,6 @@ export function DashboardClient() {
       if (typeof s.illiquidYield === "number") setIlliquidYield(s.illiquidYield);
       if (typeof s.inflationRate === "number") setInflationRate(s.inflationRate);
       if (typeof s.yearlyPensionSavings === "number") setYearlyPensionSavings(s.yearlyPensionSavings);
-      if (typeof s.pensionTaxRate === "number") setPensionTaxRate(s.pensionTaxRate);
       if (typeof s.smoothingHorizontal === "number") setSmoothingHorizontal(s.smoothingHorizontal);
       if (typeof s.smoothingVertical === "number") setSmoothingVertical(s.smoothingVertical);
       if (typeof s.strokeWidth === "number") setStrokeWidth(s.strokeWidth);
@@ -258,10 +174,88 @@ export function DashboardClient() {
   const sponsor = sponsors[currency] ?? null;
 
   const summary = useMemo(() => calculateWealth(blocks), [blocks]);
+
+  // Nothing persists until "Save record", so warn before the tab closes with work in it.
+  const stateSignature = useMemo(
+    () =>
+      JSON.stringify({
+        blocks,
+        currency,
+        birthYear,
+        retirementAge,
+        pensionYield,
+        illiquidYield,
+        inflationRate,
+        yearlyPensionSavings,
+        showWealthPlanner,
+        showPensionPlanner,
+      }),
+    [
+      blocks,
+      currency,
+      birthYear,
+      retirementAge,
+      pensionYield,
+      illiquidYield,
+      inflationRate,
+      yearlyPensionSavings,
+      showWealthPlanner,
+      showPensionPlanner,
+    ]
+  );
+  const dirty = savedSignature !== null && savedSignature !== stateSignature;
+
+  useEffect(() => {
+    if (user && savedSignature === null) setSavedSignature(stateSignature);
+  }, [user, savedSignature, stateSignature]);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
   const topGoals = useMemo(() => (blocks.G ?? []).slice(0, 5), [blocks]);
+
+  const derived = useMemo(() => {
+    const sum = (key: string) => (blocks[key] ?? []).reduce((total, row) => total + Number(row.value || 0), 0);
+    const cash = sum("A");
+    const shortTermDebt = sum("A2");
+    const monthlyIncome = sum("J");
+    const monthlyOutgoings = sum("K");
+    // Financial net worth deliberately excludes D and D2 — the home you live in and
+    // personal property are not part of anyone's investable wealth.
+    const financialAssets = sum("A") + sum("B") + sum("C") + sum("E");
+    const financialDebt = sum("A2") + sum("B2") + sum("C2") + sum("C3");
+    return {
+      financialNetWorth: financialAssets - financialDebt,
+      monthsCovered: monthlyOutgoings > 0 ? cash / monthlyOutgoings : null,
+      savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyOutgoings) / monthlyIncome) * 100 : null,
+      debtToAssets: summary.assets > 0 ? (summary.liabilities / summary.assets) * 100 : null,
+      propertyEquity: sum("D") - sum("D2"),
+      cash,
+      shortTermDebt,
+      expensiveDebtFlag:
+        shortTermDebt > 0 && monthlyOutgoings > 0 && cash >= monthlyOutgoings * 3
+          ? { debt: shortTermDebt, cash }
+          : null,
+    };
+  }, [blocks, summary]);
 
   const eValue = useMemo(() => (blocks.E ?? []).reduce((total, row) => total + Number(row.value || 0), 0), [blocks.E]);
   const cValue = useMemo(() => (blocks.C ?? []).reduce((total, row) => total + Number(row.value || 0), 0), [blocks.C]);
+
+  // Open the disclosure once, on load, if the user already has data in there —
+  // but never fight them if they collapse it again.
+  const advancedChecked = useRef(false);
+  useEffect(() => {
+    if (advancedChecked.current || !user) return;
+    advancedChecked.current = true;
+    if (ADVANCED_KEYS.some((key) => (blocks[key] ?? []).length > 0)) setShowAdvanced(true);
+  }, [user, blocks]);
 
   useEffect(() => {
     if (user && ["US", "UK", "DK", "SE", "NO", "FI"].includes(user.country) && user.country !== selectedCountry) {
@@ -295,11 +289,23 @@ export function DashboardClient() {
     }));
   }, [blocks, translatedBlockMeta]);
 
-  const row1 = translatedBlockMeta.filter(({ key }) => ["A", "A2", "B", "B2", "C", "C2", "H", "C3"].includes(key));
-  const row2 = translatedBlockMeta.filter(({ key }) => ["D", "D2"].includes(key));
-  const row3 = translatedBlockMeta.filter(({ key }) => ["E"].includes(key));
-  const row4 = translatedBlockMeta.filter(({ key }) => ["J", "K"].includes(key));
-  const row5 = translatedBlockMeta.filter(({ key }) => ["G"].includes(key));
+  const guide = useMemo(() => getGuideCopy(selectedCountry), [selectedCountry]);
+
+  // Start with the two blocks every user can answer from memory, and which drive every
+  // chart on the page. Then the balance sheet in liquidity order. Rarely-used blocks sit
+  // behind a disclosure; notes go last.
+  const pick = (keys: string[]) =>
+    keys.map((key) => translatedBlockMeta.find((meta) => meta.key === key)).filter(Boolean) as typeof translatedBlockMeta;
+
+  const rowStart = pick(["J", "K"]);
+  const rowCash = pick(["A", "A2"]);
+  const rowHome = pick(["D", "D2"]);
+  const rowLongTerm = pick(["C", "E"]);
+  const rowAdvanced = pick(ADVANCED_KEYS);
+  const rowGoals = pick(["G"]);
+  const rowNotes = pick(["H"]);
+
+  const advancedInUse = ADVANCED_KEYS.filter((key) => (blocks[key] ?? []).length > 0).length;
 
   const updateRow = (blockKey: string, rowId: string, field: keyof Row, value: string) => {
     setBlocks((current) => ({
@@ -521,7 +527,6 @@ useEffect(() => {
           illiquidYield,
           inflationRate,
           yearlyPensionSavings,
-          pensionTaxRate,
           smoothingHorizontal,
           smoothingVertical,
           strokeWidth,
@@ -533,6 +538,7 @@ useEffect(() => {
     const data = await response.json();
     setSaving(false);
     setMessage(data.message ?? data.error ?? "Saved.");
+    if (response.ok) setSavedSignature(stateSignature);
     if (data.record) {
       setUser((prev) => (prev ? { ...prev, currency } : prev));
     }
@@ -589,6 +595,15 @@ useEffect(() => {
             .join("\n")
         : "  - No goals defined yet.";
 
+    // Notes carry the context the numbers cannot ("changing jobs in spring", "inheritance
+    // expected") and used to be dropped from the prompt entirely.
+    const notesList = ["H", "I"]
+      .flatMap((key) => blocks[key] ?? [])
+      .map((row) => `${row.identifier || ""} ${row.detail || ""}`.trim())
+      .filter((line) => line.length > 0)
+      .map((line) => `  - ${line}`)
+      .join("\n");
+
     const breakdownKeys = Object.keys(blocks).filter((key) => !["G", "H", "I", "L"].includes(key));
     const blocksBreakdown = breakdownKeys
       .map((key) => {
@@ -623,6 +638,8 @@ LANGUAGE: The entire answer must be written in this language: ${language} (Count
   - Net Monthly Cash Flow: ${sym}${monthlySurplus} (Income: ${sym}${monthlyIncome} | Expenses: ${sym}${monthlyExpenses})
 • Key Life & Financial Goals:
 ${goalsList}
+• Personal Context & Notes (written by me — weigh these heavily):
+${notesList || "  - None provided."}
 
 ==================================================
 2. DETAILED WEALTH BLOCKS & STRUCTURE
@@ -775,6 +792,65 @@ Begin your response with Section 1.
               </div>
             ))}
           </div>
+
+          {/* Derived figures — no new inputs, all computed from the blocks above. */}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Financial net worth</p>
+              <p className="mt-2 text-lg font-semibold tabular-nums text-slate-900">
+                {toCurrency(derived.financialNetWorth, currency)}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Excludes your home and personal property</p>
+            </div>
+
+            <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Months of outgoings covered</p>
+              <p
+                className={`mt-2 text-lg font-semibold tabular-nums ${
+                  derived.monthsCovered === null
+                    ? "text-slate-400"
+                    : derived.monthsCovered < 3
+                    ? "text-amber-700"
+                    : "text-emerald-700"
+                }`}
+              >
+                {derived.monthsCovered === null ? "—" : `${derived.monthsCovered.toFixed(1)} months`}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Cash (A) ÷ outgoings (K) · aim for 3–6</p>
+            </div>
+
+            <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Savings rate</p>
+              <p className="mt-2 text-lg font-semibold tabular-nums text-slate-900">
+                {derived.savingsRate === null ? "—" : `${Math.round(derived.savingsRate)}%`}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Of income left after outgoings</p>
+            </div>
+
+            <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Debt to assets</p>
+              <p className="mt-2 text-lg font-semibold tabular-nums text-slate-900">
+                {derived.debtToAssets === null ? "—" : `${Math.round(derived.debtToAssets)}%`}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">All liabilities ÷ all assets</p>
+            </div>
+
+            <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Property equity</p>
+              <p className="mt-2 text-lg font-semibold tabular-nums text-slate-900">
+                {toCurrency(derived.propertyEquity, currency)}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Home and belongings (D) less loans (D2)</p>
+            </div>
+          </div>
+
+          {derived.expensiveDebtFlag && (
+            <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
+              You are holding {toCurrency(derived.expensiveDebtFlag.cash, currency)} in instant-access cash while
+              carrying {toCurrency(derived.expensiveDebtFlag.debt, currency)} on cards and short-term credit. Short-term
+              credit almost always costs more than cash earns — worth checking the rate before you do anything else.
+            </div>
+          )}
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
@@ -844,7 +920,12 @@ Begin your response with Section 1.
               <p className="text-sm font-medium text-slate-500">Wealth blocks</p>
               <h2 className="text-xl font-semibold text-slate-900">Edit your record</h2>
             </div>
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
+              {dirty && (
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">
+                  Unsaved changes
+                </span>
+              )}
               <button className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white" onClick={saveRecord} disabled={saving}>
                 {saving ? "Saving..." : "Save record"}
               </button>
@@ -854,59 +935,82 @@ Begin your response with Section 1.
           {message && <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{message}</p>}
 
           <div className="rounded-[24px] border border-sky-200 bg-sky-50 p-5 shadow-sm">
-            <p className="text-sm font-medium text-sky-700">Wealth blocks guide</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-900">How to fill in your wealth blocks</h2>
+            <p className="text-sm font-medium text-sky-700">{guide.headline}</p>
+            <h2 className="mt-1 text-lg font-semibold text-slate-900">{guide.subtitle}</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              <p className="text-sm leading-6 text-slate-600">
-                <span className="font-semibold text-slate-800">Assets (left blocks):</span> in each row, type the
-                name of the asset on the first line and its value on the second. For a stock, for example, write{" "}
-                <span className="font-medium text-slate-700">Apple Ltd.</span> as the name and what you own (shares,
-                amount) as the value.
-              </p>
-              <p className="text-sm leading-6 text-slate-600">
-                <span className="font-semibold text-slate-800">Debt blocks (right side):</span> type the name of the
-                credit company on the first line and the amount owed plus its interest rate on the second. For example{" "}
-                <span className="font-medium text-slate-700">Bank of America 4%</span>.
-              </p>
-              <p className="text-sm leading-6 text-slate-600">
-                <span className="font-semibold text-slate-800">Income &amp; expenses:</span> use monthly amounts, for
-                instance your net salary or rent. Goals can include a target value and a progress amount.
-              </p>
-              <p className="text-sm leading-6 text-slate-600">
-                You can add as many rows as you need with the <span className="font-medium text-slate-700">Add row</span>{" "}
-                button on each block. Nothing is kept until you press{" "}
-                <span className="font-medium text-slate-700">Save record</span> at the top.
-              </p>
+              {[guide.step1, guide.step2, guide.step3, guide.step4, guide.step5].map((step, index) => (
+                <p key={index} className="text-sm leading-6 text-slate-600">
+                  <span className="mr-2 font-semibold text-sky-700">{index + 1}</span>
+                  {step}
+                </p>
+              ))}
             </div>
+            <p className="mt-4 border-t border-sky-200 pt-3 text-xs leading-5 text-slate-500">{guide.disclaimer}</p>
           </div>
 
           <div className="flex flex-col gap-4">
+            {/* Start here — income and outgoings drive every chart on the page. */}
+            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionStart}</p>
             <div className="grid gap-4 xl:grid-cols-2">
-              {row1.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+              {rowStart.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
+              ))}
+            </div>
+
+            {/* Balance sheet, in liquidity order. */}
+            <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionBalance}</p>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {rowCash.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
-              {row2.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+              {rowHome.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
               ))}
             </div>
-            <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-              <div className="grid gap-4">
-                {row3.map((meta) => (
-                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+            <div className="grid gap-4 xl:grid-cols-2">
+              {rowLongTerm.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
+              ))}
+            </div>
+
+            {/* Rarely used by a salaried household — collapsed unless already in use. */}
+            <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 text-left"
+                onClick={() => setShowAdvanced((value) => !value)}
+                aria-expanded={showAdvanced}
+              >
+                <span className="text-sm font-medium text-slate-800">
+                  {guide.sectionAdvanced}
+                  <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                    {advancedInUse > 0 ? `${advancedInUse}/${ADVANCED_KEYS.length}` : ADVANCED_KEYS.length}
+                  </span>
+                </span>
+                <span aria-hidden="true" className="text-sm text-slate-500">{showAdvanced ? "▲" : "▼"}</span>
+              </button>
+              {!showAdvanced && <p className="mt-1 text-xs leading-5 text-slate-500">{guide.sectionAdvancedHint}</p>}
+            </div>
+            {showAdvanced && (
+              <div className="grid gap-4 xl:grid-cols-2">
+                {rowAdvanced.map((meta) => (
+                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
                 ))}
               </div>
-            </div>
-            
-            <div className="grid gap-4 xl:grid-cols-2">
-              {row4.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+            )}
+
+            <div className="grid gap-4">
+              {rowGoals.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
               ))}
             </div>
+
+            <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionNotes}</p>
             <div className="grid gap-4">
-              {row5.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+              {rowNotes.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} detailPlaceholder={guide.detailPlaceholder} />
               ))}
             </div>
 
@@ -947,7 +1051,7 @@ Begin your response with Section 1.
                   <p className="text-sm font-medium text-slate-500">Assets / liabilities balance overview</p>
                   <h2 className="text-lg font-semibold text-slate-900">Projection to retirement</h2>
                 </div>
-                <div className="text-sm text-slate-500">Reserves</div>
+                <div className="max-w-[16rem] text-right text-sm text-slate-500">Grows from Investments (C) plus your monthly surplus</div>
               </div>
               <div className="mt-5">
                 <div ref={assetChartRef} className="h-[320px]" />
@@ -962,7 +1066,7 @@ Begin your response with Section 1.
                   <p className="text-sm font-medium text-slate-500">Retirement funds</p>
                   <h2 className="text-lg font-semibold text-slate-900">Until retirement</h2>
                 </div>
-                <div className="text-sm text-slate-500">Pension and reserves</div>
+                <div className="max-w-[16rem] text-right text-sm text-slate-500">Pension pot only — other assets are not drawn down</div>
               </div>
               <div className="mt-5">
                 <div ref={retirementChartRef} className="h-[320px]" />
@@ -1044,16 +1148,6 @@ Begin your response with Section 1.
                     type="number"
                     value={yearlyPensionSavings}
                     onChange={(event) => setYearlyPensionSavings(Number(event.target.value || 0))}
-                  />
-                </label>
-                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                  <span className="mb-2 block font-medium">Expected tax rate pension funds</span>
-                  <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
-                    type="text"
-                    inputMode="numeric"
-                    value={pensionTaxRate}
-                    onChange={(event) => setPensionTaxRate(Number(sanitizeNumericPercent(event.target.value) || 0))}
                   />
                 </label>
               </div>
@@ -1162,16 +1256,25 @@ Begin your response with Section 1.
 }
 
 type BlockCardProps = {
-  meta: { key: string; title: string; blurb: string };
+  meta: {
+    key: string;
+    title: string;
+    blurb: string;
+    examples?: string;
+    notHere?: string;
+    tip?: string;
+    placeholder?: string;
+  };
   blocks: Blocks;
   updateRow: (blockKey: string, rowId: string, field: keyof Row, value: string) => void;
   addRow: (blockKey: string) => void;
   deleteRow: (blockKey: string, rowId: string) => void;
   toggleComplete: (blockKey: string, rowId: string) => void;
   currency: string;
+  detailPlaceholder?: string;
 };
 
-function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency }: BlockCardProps) {
+function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency, detailPlaceholder }: BlockCardProps) {
   const rows = blocks[meta.key] ?? [];
   const isGoalBlock = meta.key === "G";
   const isLiabilityBlock = ["A2", "B2", "C2", "C3", "D2"].includes(meta.key);
@@ -1235,6 +1338,17 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
     : isGoalTheme
     ? "text-sky-700/80"
     : "text-slate-600";
+  // The "not here" rule is what turns fourteen categories into a decision tree —
+  // give it its own surface so it reads as a rule, not as more description.
+  const notHereClasses = isLiabilityBlock
+    ? "bg-rose-100/70 text-rose-900"
+    : isIncomeBlock
+    ? "bg-emerald-100/70 text-emerald-900"
+    : isExpenseBlock
+    ? "bg-amber-100/70 text-amber-900"
+    : isGoalTheme
+    ? "bg-sky-100/70 text-sky-900"
+    : "bg-slate-100 text-slate-700";
 
   return (
     <article className={`rounded-[24px] border p-5 shadow-sm ${cardClasses}`}>
@@ -1243,6 +1357,15 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
           <p className={`text-sm font-medium ${labelClasses}`}>{meta.key}</p>
           <h3 className={`mt-1 text-lg font-semibold ${titleClasses}`}>{meta.title}</h3>
           <p className={`mt-2 text-sm leading-6 ${blurbClasses}`}>{meta.blurb}</p>
+          {meta.examples && (
+            <p className="mt-2 text-sm leading-6 text-slate-500">{meta.examples}</p>
+          )}
+          {meta.notHere && (
+            <p className={`mt-3 rounded-xl px-3 py-2 text-sm leading-6 ${notHereClasses}`}>{meta.notHere}</p>
+          )}
+          {meta.tip && (
+            <p className="mt-2 text-sm italic leading-6 text-slate-500">{meta.tip}</p>
+          )}
         </div>
         {!isNoteBlock && (
           <div className={`rounded-full px-3 py-1 text-sm font-medium ${badgeClasses}`}>
@@ -1275,7 +1398,7 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                 </button>
               </div>
             ) : (
-              <div className={`grid gap-3 ${isGoalBlock ? "md:grid-cols-[auto_1.2fr_0.55fr_0.55fr_auto]" : "md:grid-cols-[1.3fr_0.55fr_auto]"}`}>
+              <div className={`grid gap-3 ${isGoalBlock ? "md:grid-cols-[auto_1.2fr_0.55fr_0.55fr_auto]" : "md:grid-cols-[1.2fr_0.5fr_1fr_auto]"}`}>
                 {isGoalBlock && (
                   <label className="flex items-center justify-center">
                     <input
@@ -1291,7 +1414,7 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                   className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
                   value={row.identifier}
                   onChange={(event) => updateRow(meta.key, row.id, "identifier", event.target.value)}
-                  placeholder={isGoalBlock ? "Goal" : "Identifier"}
+                  placeholder={isGoalBlock ? "Goal" : meta.placeholder ?? "Identifier"}
                 />
                 <input
                   className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none max-w-[10rem]"
@@ -1313,6 +1436,15 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                     value={row.detail ?? ""}
                     onChange={(event) => updateRow(meta.key, row.id, "detail", event.target.value)}
                     placeholder="Status"
+                  />
+                )}
+                {!isGoalBlock && (
+                  // Already carried into the AI prompt by buildAiPrompt — it just had no input.
+                  <input
+                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                    value={row.detail ?? ""}
+                    onChange={(event) => updateRow(meta.key, row.id, "detail", event.target.value)}
+                    placeholder={detailPlaceholder ?? "Provider, rate, notes (optional)"}
                   />
                 )}
                 <button className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700" onClick={() => deleteRow(meta.key, row.id)}>
