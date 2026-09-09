@@ -48,7 +48,7 @@ const blockMeta = [
 ];
 
 // Blocks hidden behind the "show advanced" disclosure — rarely used by a salaried household.
-const ADVANCED_KEYS = ["B", "B2", "C3"];
+const ADVANCED_KEYS = ["B", "B2"];
 
 function getBlockCopy(key: string, language: CountryCode) {
   const fallback = blockMeta.find((meta) => meta.key === key) ?? blockMeta[0];
@@ -120,6 +120,7 @@ export function DashboardClient() {
   const [inflationRate, setInflationRate] = useState(2);
   const [yearlyPensionSavings, setYearlyPensionSavings] = useState(10000);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showGuide, setShowGuide] = useState(true);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [projectionOverrides, setProjectionOverrides] = useState<Record<number, number>>({});
   const [assetProjectionOverrides, setAssetProjectionOverrides] = useState<Record<number, number>>({});
@@ -303,7 +304,7 @@ export function DashboardClient() {
   const rowInvestments = pick(["C", "C2"]);
   const rowPension = pick(["E", "H"]);
   const rowAdvanced = pick(ADVANCED_KEYS);
-  const rowGoals = pick(["G"]);
+  const rowGoals = pick(["C3", "G"]);
 
   const advancedInUse = ADVANCED_KEYS.filter((key) => (blocks[key] ?? []).length > 0).length;
 
@@ -844,13 +845,6 @@ Begin your response with Section 1.
             </div>
           </div>
 
-          {derived.expensiveDebtFlag && (
-            <div className="rounded-[20px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-              You are holding {toCurrency(derived.expensiveDebtFlag.cash, currency)} in instant-access cash while
-              carrying {toCurrency(derived.expensiveDebtFlag.debt, currency)} on cards and short-term credit. Short-term
-              credit almost always costs more than cash earns — worth checking the rate before you do anything else.
-            </div>
-          )}
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
@@ -948,35 +942,37 @@ Begin your response with Section 1.
             <p className="mt-4 border-t border-sky-200 pt-3 text-xs leading-5 text-slate-500">{guide.disclaimer}</p>
           </div>
 
-          <div className="flex flex-col gap-4">
-            {/* Start here — income and outgoings drive every chart on the page. */}
-            <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionStart}</p>
-            <div className="grid gap-4 xl:grid-cols-2">
-              {rowStart.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
-              ))}
-            </div>
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm"
+              onClick={() => setShowGuide((value) => !value)}
+            >
+              {showGuide ? "Turn off guide" : "Show guide"}
+            </button>
+          </div>
 
+          <div className="flex flex-col gap-4">
             {/* Balance sheet, in liquidity order. */}
             <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionBalance}</p>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowCash.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowHome.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowInvestments.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowPension.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
               ))}
             </div>
 
@@ -1001,14 +997,22 @@ Begin your response with Section 1.
             {showAdvanced && (
               <div className="grid gap-4 xl:grid-cols-2">
                 {rowAdvanced.map((meta) => (
-                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
                 ))}
               </div>
             )}
 
-            <div className="grid gap-4">
+            {/* Start here — income and outgoings drive every chart on the page. */}
+            <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionStart}</p>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {rowStart.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
+              ))}
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-2">
               {rowGoals.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
               ))}
             </div>
 
@@ -1269,9 +1273,10 @@ type BlockCardProps = {
   deleteRow: (blockKey: string, rowId: string) => void;
   toggleComplete: (blockKey: string, rowId: string) => void;
   currency: string;
+  showGuide: boolean;
 };
 
-function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency }: BlockCardProps) {
+function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency, showGuide }: BlockCardProps) {
   const rows = blocks[meta.key] ?? [];
   const isGoalBlock = meta.key === "G";
   const isLiabilityBlock = ["A2", "B2", "C2", "C3", "D2"].includes(meta.key);
@@ -1353,14 +1358,14 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
         <div>
           <p className={`text-sm font-medium ${labelClasses}`}>{meta.key}</p>
           <h3 className={`mt-1 text-lg font-semibold ${titleClasses}`}>{meta.title}</h3>
-          <p className={`mt-2 text-sm leading-6 ${blurbClasses}`}>{meta.blurb}</p>
-          {meta.examples && (
+          {showGuide && <p className={`mt-2 text-sm leading-6 ${blurbClasses}`}>{meta.blurb}</p>}
+          {showGuide && meta.examples && (
             <p className="mt-2 text-sm leading-6 text-slate-500">{meta.examples}</p>
           )}
-          {meta.notHere && (
+          {showGuide && meta.notHere && (
             <p className={`mt-3 rounded-xl px-3 py-2 text-sm leading-6 ${notHereClasses}`}>{meta.notHere}</p>
           )}
-          {meta.tip && (
+          {showGuide && meta.tip && (
             <p className="mt-2 text-sm italic leading-6 text-slate-500">{meta.tip}</p>
           )}
         </div>
