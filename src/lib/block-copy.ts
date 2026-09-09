@@ -298,7 +298,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // B — Assets · advanced
     B: {
-      headline: "Bundet opsparing og tilgodehavender",
+      headline: "Bundet opsparing og tilgodehavender, samt forventede ekstraordinære indtægter/udbetalinger",
       subtitle: "Penge der er dine, men som tager uger eller måneder at få fat i — bindingsperiode, opsigelsesvarsel, eller nogen mangler at betale dig.",
       examples: "Fastforrentet indlån med binding, opsparing med opsigelsesvarsel, depositum hos udlejer, penge familie eller venner skylder dig, overskydende skat eller forsikringsudbetaling du venter på",
       notHere: "Ikke her: fri opsparing → A. Investeringer du kan sælge når som helst → C. Pension → E.",
@@ -325,7 +325,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // C2 — Debt · advanced
     C2: {
-      headline: "Gæld knyttet til investeringer",
+      headline: "Gæld og potentiel skat knyttet til investeringer",
       subtitle: "Lån med sikkerhed i — eller optaget for at købe — investeringerne ovenfor.",
       examples: "Realkredit i udlejningsejendom, lån i sommerhus til udlejning, belåning af værdipapirdepot, erhvervsejendomslån, lån optaget for at investere",
       notHere: "Ikke her: lånet i den bolig du selv bor i → D2.",
@@ -430,7 +430,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // B — Assets · advanced
     B: {
-      headline: "Bundet sparande och fordringar",
+      headline: "Bundet sparande och fordringar, samt förväntade extraordinära intäkter/utbetalningar",
       subtitle: "Pengar som är dina men tar veckor eller månader att komma åt — bindningstid, uppsägningstid, eller någon har inte betalat dig än.",
       examples: "Fasträntekonto/bundet sparkonto, sparkonto med uppsägningstid, deposition hos hyresvärd, pengar någon är skyldig dig, skatteåterbäring eller försäkringsersättning du väntar på",
       notHere: "Inte här: sparande utan bindningstid → A. Investeringar du kan sälja när som helst → C. Pension → E.",
@@ -457,7 +457,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // C2 — Debt · advanced
     C2: {
-      headline: "Skulder kopplade till investeringar",
+      headline: "Skulder och potentiell skatt kopplade till investeringar",
       subtitle: "Lån med säkerhet i — eller taget för att köpa — investeringarna ovan.",
       examples: "Bolån på hyresfastighet, lån på andra bostad för uthyrning, belåning av värdepappersdepå, lån på kommersiell fastighet, lån taget för att investera",
       notHere: "Inte här: lånet på bostaden du bor i → D2.",
@@ -562,7 +562,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // B — Assets · advanced
     B: {
-      headline: "Bundet sparing og tilgodehavender",
+      headline: "Bundet sparing og tilgodehavender, samt forventede ekstraordinære inntekter/utbetalinger",
       subtitle: "Penger som er dine, men som tar uker eller måneder å få tak i — bindingstid, oppsigelsestid, eller noen skylder deg penger.",
       examples: "Fastrentekonto/bundet sparekonto, BSU, sparekonto med oppsigelsestid, depositum hos utleier, penger noen skylder deg, skattepenger til gode eller forsikringsoppgjør du venter på",
       notHere: "Ikke her: sparing uten binding → A. Investeringer du kan selge når som helst → C. Pensjon → E.",
@@ -589,7 +589,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // C2 — Debt · advanced
     C2: {
-      headline: "Gjeld knyttet til investeringer",
+      headline: "Gjeld og potensiell skatt knyttet til investeringer",
       subtitle: "Lån med sikkerhet i — eller tatt opp for å kjøpe — investeringene over.",
       examples: "Lån på utleiebolig, lån på sekundærbolig, belåning av verdipapirkonto, næringseiendomslån, lån tatt opp for å investere",
       notHere: "Ikke her: lånet på boligen du bor i → D2.",
@@ -694,7 +694,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // B — Assets · advanced
     B: {
-      headline: "Sidotut säästöt ja saamiset",
+      headline: "Sidotut säästöt ja saamiset, sekä odotetut poikkeukselliset tulot/maksut",
       subtitle: "Rahat, jotka ovat sinun mutta joiden saaminen kestää viikkoja tai kuukausia — määräaika, irtisanomisaika tai joku on velkaa sinulle.",
       examples: "Määräaikaistalletus, irtisanomisajallinen säästötili, vuokravakuus, läheisen sinulle velkaa oleva summa, veronpalautus tai vakuutuskorvaus jota odotat",
       notHere: "Ei tähän: vapaasti nostettavat säästöt → A. Milloin tahansa myytävät sijoitukset → C. Eläkkeet → E.",
@@ -721,7 +721,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // C2 — Debt · advanced
     C2: {
-      headline: "Sijoituksiin liittyvät velat",
+      headline: "Sijoituksiin liittyvät velat ja mahdollinen vero",
       subtitle: "Lainat, joiden vakuutena ovat — tai jotka on otettu ostamaan — yllä olevat sijoitukset.",
       examples: "Sijoitusasuntolaina, kakkosasunnon laina, arvopaperisalkun vakuudellinen laina, liikekiinteistölaina, sijoittamista varten otettu laina",
       notHere: "Ei tähän: oman asuntosi laina → D2.",

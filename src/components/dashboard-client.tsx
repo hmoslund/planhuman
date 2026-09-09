@@ -982,7 +982,7 @@ Begin your response with Section 1.
               <p className="text-sm font-medium text-violet-500">AI</p>
               <h2 className="mt-1 text-lg font-semibold text-violet-900">AI guided advisory</h2>
               <p className="mt-2 text-sm leading-6 text-violet-700/80">
-                Build your AI prompt. You can copy the ai-text and paste into ChatGpt.com or any other AI agents, and continue your dialogue with the AI agent of your choise
+                Build your AI prompt. You can copy the ai-text and paste into ChatGpt.com or any other AI agents, and continue your dialogue with the AI agent of your choise. You can edit the text, and ask your burning questions; for example “When can I afford a second car, based on the information”
               </p>
               <textarea
                 rows={8}
