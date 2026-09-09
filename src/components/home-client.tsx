@@ -239,7 +239,12 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
               <p className="mt-2 text-sm leading-7 text-slate-600">
                 Many financial advisors push you toward expensive platforms, and similar tools often operate for profit or monetize your private information.
               </p>
-              <p className="mt-3 text-sm leading-7 text-slate-600">We do things differently.</p>
+              <p className="mt-3 text-sm leading-7 text-slate-600">
+                We do things differently. We got tired of spreadsheets, and banks&apos; stupid systems — so we built
+                this as a secure, anonymous, non-profit, hobby-based project — and we do not want your name, contact
+                details, etc. It is your sensitive data. If you are able to support with a cup of coffee — great. All
+                donations will be used to make this better for you.
+              </p>
             </div>
             <div>
               <h2 className="text-base font-semibold text-slate-900">Our Mission Is Simple</h2>
