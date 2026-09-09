@@ -497,6 +497,19 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
               <span className="text-sm font-medium text-slate-800 underline">buymeacoffee.com/planhumans</span>
             </a>
           </div>
+
+          <div className="mt-6 space-y-4">
+            <img
+              src="/sampleai.png"
+              alt="Sample of the AI guided advisory in PlanHumans"
+              className="w-full rounded-2xl border border-slate-200 shadow-sm"
+            />
+            <img
+              src="/sampleoverview.png"
+              alt="Sample of the wealth overview dashboard in PlanHumans"
+              className="w-full rounded-2xl border border-slate-200 shadow-sm"
+            />
+          </div>
         </section>
       </div>
     </main>
