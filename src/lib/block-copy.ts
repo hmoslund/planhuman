@@ -34,7 +34,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // B — Assets · advanced
     B: {
-      headline: "Locked Savings & Money Owed to You",
+      headline: "Locked Savings & Money Owed to You, and Expected Extraordinary Earnings / Payments",
       subtitle: "Money that is yours but takes weeks or months to reach — fixed terms, notice periods, or someone still has to pay you.",
       examples: "Certificate of deposit (CD), notice savings account, security deposit held by a landlord, money a friend or family member owes you, a tax refund or insurance payout you’re waiting for, escrow balance",
       notHere: "Not here: instant-access savings → A. Investments you could sell any day → C. Retirement accounts → E.",
@@ -61,7 +61,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // C2 — Debt · advanced
     C2: {
-      headline: "Debt Against Investments",
+      headline: "Debt and Potential Tax Against Investments",
       subtitle: "Borrowing secured on — or taken out to buy — the investments above.",
       examples: "Rental property mortgage, second-property mortgage, margin loan on a brokerage account, commercial property loan, a loan taken out to invest",
       notHere: "Not here: the mortgage on the home you live in → D2.",
@@ -124,7 +124,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // G — Goals
     G: {
-      headline: "Goals",
+      headline: "Goals and Goal Status",
       subtitle: "What you are saving towards. First number is what it will cost in total, second is how much you have put aside so far.",
       examples: "Down payment on a bigger home, a second or electric car, a long trip, kitchen or bathroom renovation, a sabbatical, paying off the mortgage early, college fund, building a 6-month emergency fund",
       tip: "Put the year in the name, e.g. “New kitchen, 2028”. The AI advisory uses it to tell you whether your timing is realistic.",
@@ -166,7 +166,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // B — Assets · advanced
     B: {
-      headline: "Locked Savings & Money Owed to You",
+      headline: "Locked Savings & Money Owed to You, and Expected Extraordinary Earnings / Payments",
       subtitle: "Money that is yours but takes weeks or months to reach — fixed terms, notice periods, or someone still has to pay you.",
       examples: "Fixed-rate bond, notice savings account, tenancy deposit held in a protection scheme, money a friend or family member owes you, a tax refund or insurance payout you’re waiting for",
       notHere: "Not here: instant-access savings → A. Investments you could sell any day → C. Pensions → E.",
@@ -193,7 +193,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // C2 — Debt · advanced
     C2: {
-      headline: "Debt Against Investments",
+      headline: "Debt and Potential Tax Against Investments",
       subtitle: "Borrowing secured on — or taken out to buy — the investments above.",
       examples: "Buy-to-let mortgage, second-property mortgage, margin loan on a brokerage account, commercial property loan, a loan taken out to invest",
       notHere: "Not here: the mortgage on the home you live in → D2.",
@@ -256,7 +256,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
     },
     // G — Goals
     G: {
-      headline: "Goals",
+      headline: "Goals and Goal Status",
       subtitle: "What you are saving towards. First number is what it will cost in total, second is how much you have put aside so far.",
       examples: "Deposit on a bigger home, a second or electric car, a long trip, kitchen or bathroom renovation, a sabbatical, paying off the mortgage early, university fund, building a 6-month emergency fund",
       tip: "Put the year in the name, e.g. “New kitchen, 2028”. The AI advisory uses it to tell you whether your timing is realistic.",

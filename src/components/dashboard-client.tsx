@@ -32,16 +32,16 @@ const MAX_ROWS = 400;
 const blockMeta = [
   { key: "A", title: "Cash & instant-access savings", blurb: "Money you could spend this week." },
   { key: "A2", title: "Credit cards & short-term debt", blurb: "Balances on cards and flexible credit." },
-  { key: "B", title: "Locked savings & money owed to you", blurb: "Yours, but weeks or months away." },
+  { key: "B", title: "Locked savings & money owed to you, and expected extraordinary earnings / payments", blurb: "Yours, but weeks or months away." },
   { key: "B2", title: "Loans & bills you owe", blurb: "Money you already owe someone." },
   { key: "C", title: "Investments", blurb: "Money invested to grow over years." },
-  { key: "C2", title: "Debt against investments", blurb: "Borrowing secured on your investments." },
+  { key: "C2", title: "Debt and potential tax against investments", blurb: "Borrowing secured on your investments." },
   { key: "D", title: "Your home & belongings", blurb: "What they would realistically sell for today." },
   { key: "D2", title: "Mortgage & loans on what you own", blurb: "Balance outstanding, not the payment." },
   { key: "E", title: "Pensions", blurb: "Retirement pots with a balance." },
   { key: "J", title: "Monthly income", blurb: "What lands in your account each month." },
   { key: "K", title: "Monthly outgoings", blurb: "What leaves your account each month." },
-  { key: "G", title: "Goals", blurb: "What you are saving towards." },
+  { key: "G", title: "Goals and Goal status", blurb: "What you are saving towards." },
   { key: "H", title: "My notes", blurb: "Anything the numbers do not capture." },
   { key: "I", title: "My notes", blurb: "Anything the numbers do not capture." },
 ];
@@ -953,13 +953,12 @@ Begin your response with Section 1.
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
-              {rowPension.map((meta) => (
+              {rowAdvanced.map((meta) => (
                 <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
               ))}
             </div>
-
             <div className="grid gap-4 xl:grid-cols-2">
-              {rowAdvanced.map((meta) => (
+              {rowPension.map((meta) => (
                 <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
               ))}
             </div>
