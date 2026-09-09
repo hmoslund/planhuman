@@ -36,7 +36,6 @@ const blockMeta = [
   { key: "B2", title: "Loans & bills you owe", blurb: "Money you already owe someone." },
   { key: "C", title: "Investments", blurb: "Money invested to grow over years." },
   { key: "C2", title: "Debt against investments", blurb: "Borrowing secured on your investments." },
-  { key: "C3", title: "Tax if you sold (optional)", blurb: "Estimated tax on unrealised gains." },
   { key: "D", title: "Your home & belongings", blurb: "What they would realistically sell for today." },
   { key: "D2", title: "Mortgage & loans on what you own", blurb: "Balance outstanding, not the payment." },
   { key: "E", title: "Pensions", blurb: "Retirement pots with a balance." },
@@ -46,9 +45,6 @@ const blockMeta = [
   { key: "H", title: "My notes", blurb: "Anything the numbers do not capture." },
   { key: "I", title: "My notes", blurb: "Anything the numbers do not capture." },
 ];
-
-// Blocks hidden behind the "show advanced" disclosure — rarely used by a salaried household.
-const ADVANCED_KEYS = ["B", "B2"];
 
 function getBlockCopy(key: string, language: CountryCode) {
   const fallback = blockMeta.find((meta) => meta.key === key) ?? blockMeta[0];
@@ -89,7 +85,6 @@ function createEmptyBlocks() {
     B2: [],
     C: [],
     C2: [],
-    C3: [],
     D: [],
     D2: [],
     E: [],
@@ -119,7 +114,6 @@ export function DashboardClient() {
   const [illiquidYield, setIlliquidYield] = useState(4);
   const [inflationRate, setInflationRate] = useState(2);
   const [yearlyPensionSavings, setYearlyPensionSavings] = useState(10000);
-  const [showAdvanced, setShowAdvanced] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [projectionOverrides, setProjectionOverrides] = useState<Record<number, number>>({});
@@ -230,7 +224,7 @@ export function DashboardClient() {
     // Financial net worth deliberately excludes D and D2 — the home you live in and
     // personal property are not part of anyone's investable wealth.
     const financialAssets = sum("A") + sum("B") + sum("C") + sum("E");
-    const financialDebt = sum("A2") + sum("B2") + sum("C2") + sum("C3");
+    const financialDebt = sum("A2") + sum("B2") + sum("C2");
     return {
       financialNetWorth: financialAssets - financialDebt,
       monthsCovered: monthlyOutgoings > 0 ? cash / monthlyOutgoings : null,
@@ -248,15 +242,6 @@ export function DashboardClient() {
 
   const eValue = useMemo(() => (blocks.E ?? []).reduce((total, row) => total + Number(row.value || 0), 0), [blocks.E]);
   const cValue = useMemo(() => (blocks.C ?? []).reduce((total, row) => total + Number(row.value || 0), 0), [blocks.C]);
-
-  // Open the disclosure once, on load, if the user already has data in there —
-  // but never fight them if they collapse it again.
-  const advancedChecked = useRef(false);
-  useEffect(() => {
-    if (advancedChecked.current || !user) return;
-    advancedChecked.current = true;
-    if (ADVANCED_KEYS.some((key) => (blocks[key] ?? []).length > 0)) setShowAdvanced(true);
-  }, [user, blocks]);
 
   useEffect(() => {
     if (user && ["US", "UK", "DK", "SE", "NO", "FI"].includes(user.country) && user.country !== selectedCountry) {
@@ -277,7 +262,6 @@ export function DashboardClient() {
       { key: "B2", value: blocks.B2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
       { key: "C", value: blocks.C?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
       { key: "C2", value: blocks.C2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "C3", value: blocks.C3?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
       { key: "D", value: blocks.D?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
       { key: "D2", value: blocks.D2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
       { key: "E", value: blocks.E?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
@@ -303,10 +287,8 @@ export function DashboardClient() {
   const rowHome = pick(["D", "D2"]);
   const rowInvestments = pick(["C", "C2"]);
   const rowPension = pick(["E", "H"]);
-  const rowAdvanced = pick(ADVANCED_KEYS);
-  const rowGoals = pick(["C3", "G"]);
-
-  const advancedInUse = ADVANCED_KEYS.filter((key) => (blocks[key] ?? []).length > 0).length;
+  const rowAdvanced = pick(["B", "B2"]);
+  const rowGoals = pick(["G"]);
 
   const updateRow = (blockKey: string, rowId: string, field: keyof Row, value: string) => {
     setBlocks((current) => ({
@@ -976,31 +958,11 @@ Begin your response with Section 1.
               ))}
             </div>
 
-            {/* Rarely used by a salaried household — collapsed unless already in use. */}
-            <div className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-3 text-left"
-                onClick={() => setShowAdvanced((value) => !value)}
-                aria-expanded={showAdvanced}
-              >
-                <span className="text-sm font-medium text-slate-800">
-                  {guide.sectionAdvanced}
-                  <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                    {advancedInUse > 0 ? `${advancedInUse}/${ADVANCED_KEYS.length}` : ADVANCED_KEYS.length}
-                  </span>
-                </span>
-                <span aria-hidden="true" className="text-sm text-slate-500">{showAdvanced ? "▲" : "▼"}</span>
-              </button>
-              {!showAdvanced && <p className="mt-1 text-xs leading-5 text-slate-500">{guide.sectionAdvancedHint}</p>}
+            <div className="grid gap-4 xl:grid-cols-2">
+              {rowAdvanced.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
+              ))}
             </div>
-            {showAdvanced && (
-              <div className="grid gap-4 xl:grid-cols-2">
-                {rowAdvanced.map((meta) => (
-                  <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
-                ))}
-              </div>
-            )}
 
             {/* Start here — income and outgoings drive every chart on the page. */}
             <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionStart}</p>
@@ -1010,7 +972,7 @@ Begin your response with Section 1.
               ))}
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4">
               {rowGoals.map((meta) => (
                 <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
               ))}
@@ -1279,7 +1241,7 @@ type BlockCardProps = {
 function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency, showGuide }: BlockCardProps) {
   const rows = blocks[meta.key] ?? [];
   const isGoalBlock = meta.key === "G";
-  const isLiabilityBlock = ["A2", "B2", "C2", "C3", "D2"].includes(meta.key);
+  const isLiabilityBlock = ["A2", "B2", "C2", "D2"].includes(meta.key);
   const isIncomeBlock = meta.key === "J";
   const isExpenseBlock = meta.key === "K";
   const isNoteBlock = ["H", "I"].includes(meta.key);
