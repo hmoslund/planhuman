@@ -219,6 +219,19 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
             ))}
           </div>
 
+          <div className="mt-8 space-y-4">
+            <img
+              src="/sampleai.png"
+              alt="Sample of the AI guided advisory in PlanHumans"
+              className="w-full rounded-2xl border border-slate-200 shadow-sm"
+            />
+            <img
+              src="/sampleoverview.png"
+              alt="Sample of the wealth overview dashboard in PlanHumans"
+              className="w-full rounded-2xl border border-slate-200 shadow-sm"
+            />
+          </div>
+
           <div className="mt-8 space-y-5 rounded-2xl border border-slate-200 bg-slate-50 p-6">
             <div>
               <h2 className="text-base font-semibold text-slate-900">How Your Data Is Handled</h2>
@@ -503,18 +516,6 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
             </a>
           </div>
 
-          <div className="mt-6 space-y-4">
-            <img
-              src="/sampleai.png"
-              alt="Sample of the AI guided advisory in PlanHumans"
-              className="w-full rounded-2xl border border-slate-200 shadow-sm"
-            />
-            <img
-              src="/sampleoverview.png"
-              alt="Sample of the wealth overview dashboard in PlanHumans"
-              className="w-full rounded-2xl border border-slate-200 shadow-sm"
-            />
-          </div>
         </section>
       </div>
     </main>
