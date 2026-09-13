@@ -823,7 +823,7 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     sectionAdvancedHint: "Most people can leave these empty.",
     sectionNotes: "Notes",
     disclaimer: "PlanHumans is a planning tool, not financial advice. Forecasts are simple projections based on the assumptions you set — they are not a prediction of what will happen.",
-    premiumNote: "Some features (adding goals, unlimited AI suggestions) are for premium users. Donate 10 USD to unlock premium for 1 year. PlanHumans is a non-profit — donations go toward making the solution better, more secure, and helping cover advertising costs.",
+    premiumNote: "Some features (adding goals, unlimited AI suggestions) are for premium users only. Donate 10 USD to unlock premium for 1 year. PlanHumans is a non-profit — donations go toward making the solution better, more secure, and covering advertising expenses.",
   },
   UK: {
     headline: "How to fill in your wealth blocks",
@@ -840,7 +840,7 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     sectionAdvancedHint: "Most people can leave these empty.",
     sectionNotes: "Notes",
     disclaimer: "PlanHumans is a planning tool, not financial advice. Forecasts are simple projections based on the assumptions you set — they are not a prediction of what will happen.",
-    premiumNote: "Some features (adding goals, unlimited AI suggestions) are for premium users. Donate 10 USD to unlock premium for 1 year. PlanHumans is a non-profit — donations go toward making the solution better, more secure, and helping cover advertising costs.",
+    premiumNote: "Some features (adding goals, unlimited AI suggestions) are for premium users only. Donate 10 USD to unlock premium for 1 year. PlanHumans is a non-profit — donations go toward making the solution better, more secure, and covering advertising expenses.",
   },
   DK: {
     headline: "Sådan udfylder du dine formueblokke",

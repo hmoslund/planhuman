@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { guideCopy, type CountryCode } from "@/lib/block-copy";
+import { guideCopy } from "@/lib/block-copy";
 
 declare global {
   interface Window {
@@ -30,10 +30,10 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
   const [honeypot, setHoneypot] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
 
-  // Not tied to a real "site language" (this page has none) — just uses whatever
-  // country is currently selected in the register form so the note is at least in a
-  // plausible local language before signup.
-  const premiumNote = (guideCopy[registerForm.country as CountryCode] ?? guideCopy.UK).premiumNote;
+  // This page is English-only (no site-language switching here), so this is always
+  // the UK/English copy regardless of which country the register form has selected —
+  // that selector only sets the new account's country/currency, not a display language.
+  const premiumNote = guideCopy.UK.premiumNote;
 
   const [status, setStatus] = useState<string | null>(null);
   const [aliasSuggestions, setAliasSuggestions] = useState<string[]>([]);
@@ -216,7 +216,7 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
             {[
               ["One page", "A single dashboard with your key wealth numbers at a glance."],
               ["Secure", "Each user keeps their own private wealth record — no one else can see it."],
-              ["Free to use", "but donate to support this project and feel good projects."],
+              ["Free to use", "but become premium user, or donate to support this project and feel good projects."],
             ].map(([title, description]) => (
               <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
@@ -275,7 +275,7 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
               </p>
               <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
                 <li><span className="font-medium text-slate-800">Free Plan:</span> Supported by discreet advertisements.</li>
-                <li><span className="font-medium text-slate-800">Ad-Free Plan:</span> Donate via &quot;Buy Me a Coffee&quot; once a year to turn off all ads.</li>
+                <li><span className="font-medium text-slate-800">Premium plan:</span> 10 USD in your local currency to unlock additional features and turn off ads.</li>
               </ul>
               <p className="mt-3 text-sm leading-7 text-slate-600">
                 Every donation goes directly toward hosting, security, and developing cool new features.
