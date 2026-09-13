@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { guideCopy, type CountryCode } from "@/lib/block-copy";
 
 declare global {
   interface Window {
@@ -28,6 +29,11 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
   const [registerForm, setRegisterForm] = useState({ alias: "", password: "", country: "DK" });
   const [honeypot, setHoneypot] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
+
+  // Not tied to a real "site language" (this page has none) — just uses whatever
+  // country is currently selected in the register form so the note is at least in a
+  // plausible local language before signup.
+  const premiumNote = (guideCopy[registerForm.country as CountryCode] ?? guideCopy.UK).premiumNote;
 
   const [status, setStatus] = useState<string | null>(null);
   const [aliasSuggestions, setAliasSuggestions] = useState<string[]>([]);
@@ -495,6 +501,13 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
               </div>
             )}
           </form>
+
+          <p className="mt-6 text-xs leading-5 text-slate-500">
+            {premiumNote}{" "}
+            <a href="https://buymeacoffee.com/planhumans" target="_blank" rel="noopener noreferrer" className="font-medium text-slate-700 underline">
+              buymeacoffee.com/planhumans
+            </a>
+          </p>
 
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="text-sm font-semibold text-slate-900">Support the project</p>

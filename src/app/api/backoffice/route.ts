@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { calculateWealth, getUserFromRequest, isAdminAlias, isAdminEmail } from "@/lib/auth";
+import { isPremiumUser } from "@/lib/premium";
 import prisma from "@/lib/prisma";
 
 function isProtectedAdmin(entry: { email: string | null; alias: string | null }) {
@@ -34,6 +35,9 @@ export async function GET(request: Request) {
         userType: entry.donated ? "Donor" : "Free",
         donated: entry.donated,
         donatedAt: entry.donatedAt,
+        type: entry.type,
+        isPremium: isPremiumUser(entry),
+        becameUserDate: entry.becameUserDate,
         rowCount: Object.values(blocks).reduce((count, rows) => count + (rows?.length ?? 0), 0),
         summary: calculateWealth(blocks),
       };

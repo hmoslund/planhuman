@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { calculateWealth, createDefaultBlocks, getUserFromRequest, MAX_ROWS, normalizeBlockRows } from "@/lib/auth";
 import { DEFAULT_SETTINGS, normalizeCurrency, type PlannerSettings } from "@/lib/wealth";
+import { isPremiumUser } from "@/lib/premium";
 import prisma from "@/lib/prisma";
 
 export async function GET(request: Request) {
@@ -26,6 +27,8 @@ export async function GET(request: Request) {
         isAdmin: user.isAdmin,
         donated: user.donated,
         userNumber: user.userNumber,
+        type: user.type,
+        aiPromptCount: user.aiPromptCount,
       },
       record: {
         id: record?.id ?? null,
@@ -57,6 +60,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `Row limit reached (${MAX_ROWS}).` }, { status: 400 });
     }
 
+    const existing = await prisma.wealthRecord.findFirst({ where: { userId: user.id } });
+
+    // Adding a new goal is a premium feature. Existing goals a user already has are never
+    // touched here — editing, completing, or removing them is still allowed for everyone —
+    // but a non-premium user can't grow the Goals (G) block past what they already had.
+    if (!isPremiumUser(user)) {
+      const existingGoalCount = ((existing?.blocks as Record<string, unknown[]> | undefined)?.G ?? []).length;
+      const incomingGoalCount = normalizedBlocks.G?.length ?? 0;
+      if (incomingGoalCount > existingGoalCount) {
+        return NextResponse.json(
+          { error: "Adding goals is a premium feature. Upgrade to add more goals." },
+          { status: 403 }
+        );
+      }
+    }
+
     const settings = { ...DEFAULT_SETTINGS, ...((body.settings as Partial<PlannerSettings>) ?? {}) };
     const currency = body.currency ? normalizeCurrency(body.currency) : undefined;
 
@@ -67,7 +86,6 @@ export async function POST(request: Request) {
       });
     }
 
-    const existing = await prisma.wealthRecord.findFirst({ where: { userId: user.id } });
     if (existing) {
       const updated = await prisma.wealthRecord.update({
         where: { id: existing.id },

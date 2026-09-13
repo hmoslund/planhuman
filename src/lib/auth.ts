@@ -15,6 +15,8 @@ export type AppUser = {
   isAdmin: boolean;
   donated: boolean;
   userNumber: number | null;
+  type: string | null;
+  aiPromptCount: number;
 };
 
 // Session/reset/verification tokens are only ever stored as this hash, so a

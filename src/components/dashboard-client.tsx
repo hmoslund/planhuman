@@ -8,6 +8,7 @@ import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import { curveMonotoneX } from "d3-shape";
 import { calculateWealth, getCountryInfo, normalizeCurrency, CURRENCIES, toCurrency } from "@/lib/wealth";
 import { blockTranslations, guideCopy, type BlockCopy, type CountryCode } from "@/lib/block-copy";
+import { isPremiumUser } from "@/lib/premium";
 
 type Row = { id: string; identifier: string; value: number; detail: string; completed?: boolean };
 type Blocks = Record<string, Row[]>;
@@ -23,7 +24,11 @@ type UserProfile = {
   isAdmin: boolean;
   donated: boolean;
   userNumber: number | null;
+  type: string | null;
+  aiPromptCount: number;
 };
+
+const FREE_AI_PROMPT_LIMIT = 3;
 
 const MAX_ROWS = 400;
 
@@ -665,6 +670,23 @@ Begin your response with Section 1.
 (END OF AI TEXT)`;
   };
 
+  const aiPromptLocked = !isPremiumUser(user) && (user?.aiPromptCount ?? 0) >= FREE_AI_PROMPT_LIMIT;
+
+  async function handleBuildAiPrompt() {
+    if (aiPromptLocked) return;
+
+    const response = await fetch("/api/ai-prompt", { method: "POST" });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setMessage(data.error ?? "Locked – only for paying users");
+      return;
+    }
+
+    setUser((prev) => (prev ? { ...prev, aiPromptCount: data.aiPromptCount } : prev));
+    setAiPrompt(buildAiPrompt());
+  }
+
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -700,6 +722,9 @@ Begin your response with Section 1.
                   ))}
                 </select>
               </label>
+              {isPremiumUser(user) && (
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-sm font-medium text-amber-800">Premium</span>
+              )}
               {user?.isAdmin && (
                 <button className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700" onClick={() => router.push("/backoffice")}>
                   Back office
@@ -939,27 +964,27 @@ Begin your response with Section 1.
             <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionBalance}</p>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowCash.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowHome.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowInvestments.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowAdvanced.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
             </div>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowPension.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
             </div>
 
@@ -967,13 +992,13 @@ Begin your response with Section 1.
             <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionStart}</p>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowStart.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
             </div>
 
             <div className="grid gap-4">
               {rowGoals.map((meta) => (
-                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} />
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
             </div>
 
@@ -991,10 +1016,12 @@ Begin your response with Section 1.
                 value={aiPrompt}
                 onChange={(event) => setAiPrompt(event.target.value)}
               />
-              <div className="mt-4 flex flex-wrap gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                 <button
-                  className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700"
-                  onClick={() => setAiPrompt(buildAiPrompt())}
+                  className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  onClick={handleBuildAiPrompt}
+                  disabled={aiPromptLocked}
+                  title={aiPromptLocked ? "Locked – only for paying users" : undefined}
                 >
                   Build AI prompt
                 </button>
@@ -1004,6 +1031,15 @@ Begin your response with Section 1.
                 >
                   Copy prompt
                 </button>
+                {aiPromptLocked ? (
+                  <span className="text-xs font-medium text-slate-500">Locked – only for paying users</span>
+                ) : (
+                  !isPremiumUser(user) && (
+                    <span className="text-xs text-violet-700/70">
+                      {Math.max(0, FREE_AI_PROMPT_LIMIT - (user?.aiPromptCount ?? 0))} of {FREE_AI_PROMPT_LIMIT} free uses left
+                    </span>
+                  )
+                )}
               </div>
             </div>
 
@@ -1235,11 +1271,13 @@ type BlockCardProps = {
   toggleComplete: (blockKey: string, rowId: string) => void;
   currency: string;
   showGuide: boolean;
+  isPremium: boolean;
 };
 
-function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency, showGuide }: BlockCardProps) {
+function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete, currency, showGuide, isPremium }: BlockCardProps) {
   const rows = blocks[meta.key] ?? [];
   const isGoalBlock = meta.key === "G";
+  const goalAddLocked = isGoalBlock && !isPremium;
   const isLiabilityBlock = ["A2", "B2", "C2", "D2"].includes(meta.key);
   const isIncomeBlock = meta.key === "J";
   const isExpenseBlock = meta.key === "K";
@@ -1411,9 +1449,19 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
         ))}
       </div>
 
-      <button className="mt-4 rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700" onClick={() => addRow(meta.key)}>
-        {isGoalBlock ? "Add goal" : "Add row"}
-      </button>
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          className="rounded-full border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() => addRow(meta.key)}
+          disabled={goalAddLocked}
+          title={goalAddLocked ? "Locked – only for paying users" : undefined}
+        >
+          {isGoalBlock ? "Add goal" : "Add row"}
+        </button>
+        {goalAddLocked && (
+          <span className="text-xs font-medium text-slate-500">Locked – only for paying users</span>
+        )}
+      </div>
     </article>
   );
 }

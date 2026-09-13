@@ -20,6 +20,9 @@ model User {
   donated                 Boolean                  @default(false)
   donatedAt               DateTime?
   userNumber              Int?
+  type                    String?
+  becameUserDate          DateTime?                @map("became_user_date") @db.Date
+  aiPromptCount           Int                      @default(0) @map("ai_prompt_count")
   createdAt               DateTime                 @default(now())
   updatedAt               DateTime                 @updatedAt
   sessions                Session[]

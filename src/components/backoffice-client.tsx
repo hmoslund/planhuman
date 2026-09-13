@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CURRENCIES } from "@/lib/wealth";
+import { isPremiumUser } from "@/lib/premium";
 
 const MAX_LOGO_BYTES = 500 * 1024;
 
@@ -20,11 +21,19 @@ type UserRow = {
   isProtected: boolean;
   userType: string;
   donated: boolean;
+  type: string | null;
+  becameUserDate: string | null;
   rowCount: number;
 };
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+// Renders as plain YYYY-MM-DD (not localized) since this also doubles as the value
+// fed into the <input type="date"> below.
+function formatBecameUserDate(value: string | null) {
+  return value ? value.slice(0, 10) : "";
 }
 
 const MAX_ROWS = 400;
@@ -45,6 +54,8 @@ export function BackofficeClient() {
   const [sponsorDrafts, setSponsorDrafts] = useState<Record<string, SponsorDraft>>({});
   const [sponsorMessage, setSponsorMessage] = useState<string | null>(null);
   const [savingSponsor, setSavingSponsor] = useState<string | null>(null);
+  const [becameUserDrafts, setBecameUserDrafts] = useState<Record<string, string>>({});
+  const [savingBecameUserDate, setSavingBecameUserDate] = useState<string | null>(null);
 
   async function loadSponsors() {
     const response = await fetch("/api/backoffice/sponsors");
@@ -130,6 +141,34 @@ export function BackofficeClient() {
     await loadUsers();
   }
 
+  function becameUserDraft(user: UserRow) {
+    return becameUserDrafts[user.id] ?? formatBecameUserDate(user.becameUserDate);
+  }
+
+  async function saveBecameUserDate(userId: string) {
+    const draft = becameUserDrafts[userId] ?? formatBecameUserDate(users.find((u) => u.id === userId)?.becameUserDate ?? null);
+    setSavingBecameUserDate(userId);
+    try {
+      const response = await fetch("/api/backoffice/became-user-date", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, becameUserDate: draft || null }),
+      });
+      const data = await response.json();
+      setMessage(data.message ?? data.error ?? "Action complete.");
+      if (response.ok) {
+        setBecameUserDrafts((prev) => {
+          const next = { ...prev };
+          delete next[userId];
+          return next;
+        });
+        await loadUsers();
+      }
+    } finally {
+      setSavingBecameUserDate(null);
+    }
+  }
+
   async function deleteUser(userId: string) {
     if (!window.confirm("Delete this user and all of their data? This cannot be undone.")) return;
     const response = await fetch(`/api/backoffice?userId=${userId}`, { method: "DELETE" });
@@ -164,8 +203,10 @@ export function BackofficeClient() {
                 <th className="px-4 py-3 font-semibold">Name</th>
                 <th className="px-4 py-3 font-semibold">Alias</th>
                 <th className="px-4 py-3 font-semibold">Created</th>
+                <th className="px-4 py-3 font-semibold">Became user</th>
                 <th className="px-4 py-3 font-semibold">Type</th>
                 <th className="px-4 py-3 font-semibold">Donated</th>
+                <th className="px-4 py-3 font-semibold">Premium</th>
                 <th className="px-4 py-3 font-semibold">Rows</th>
                 <th className="px-4 py-3 font-semibold">Verified</th>
                 <th className="px-4 py-3 font-semibold">Action</th>
@@ -184,6 +225,26 @@ export function BackofficeClient() {
                   <td className="px-4 py-3">{user.alias || <span className="text-slate-400">—</span>}</td>
                   <td className="px-4 py-3">{formatDate(user.createdAt)}</td>
                   <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="date"
+                        className="rounded-lg border border-slate-200 px-2 py-1 text-sm outline-none"
+                        value={becameUserDraft(user)}
+                        onChange={(event) =>
+                          setBecameUserDrafts((prev) => ({ ...prev, [user.id]: event.target.value }))
+                        }
+                        aria-label={`Became user date for ${user.alias ?? user.name ?? user.userNumber ?? user.id}`}
+                      />
+                      <button
+                        className="rounded-full border border-slate-200 px-3 py-1 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={savingBecameUserDate === user.id}
+                        onClick={() => saveBecameUserDate(user.id)}
+                      >
+                        {savingBecameUserDate === user.id ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
                     <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${user.donated ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
                       {user.userType}
                     </span>
@@ -196,6 +257,11 @@ export function BackofficeClient() {
                     >
                       {user.donated ? "Yes" : "No"}
                     </button>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${isPremiumUser(user) ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
+                      {isPremiumUser(user) ? "Yes" : "No"}
+                    </span>
                   </td>
                   <td className="px-4 py-3">
                     {user.rowCount}
