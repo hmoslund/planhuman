@@ -121,8 +121,8 @@ export function DashboardClient() {
   const [yearlyPensionSavings, setYearlyPensionSavings] = useState(10000);
   const [showGuide, setShowGuide] = useState(true);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
-  const [projectionOverrides, setProjectionOverrides] = useState<Record<number, number>>({});
-  const [assetProjectionOverrides, setAssetProjectionOverrides] = useState<Record<number, number>>({});
+  const [pensionSavingsOverrides, setPensionSavingsOverrides] = useState<Record<number, number>>({});
+  const [cashflowOverrides, setCashflowOverrides] = useState<Record<number, number>>({});
   const [smoothingHorizontal, setSmoothingHorizontal] = useState(0.5);
   const [smoothingVertical, setSmoothingVertical] = useState(0.5);
   const [strokeWidth, setStrokeWidth] = useState(3);
@@ -155,6 +155,12 @@ export function DashboardClient() {
       if (typeof s.strokeWidth === "number") setStrokeWidth(s.strokeWidth);
       if (typeof s.showWealthPlanner === "boolean") setShowWealthPlanner(s.showWealthPlanner);
       if (typeof s.showPensionPlanner === "boolean") setShowPensionPlanner(s.showPensionPlanner);
+      if (s.pensionSavingsOverrides && typeof s.pensionSavingsOverrides === "object") {
+        setPensionSavingsOverrides(s.pensionSavingsOverrides);
+      }
+      if (s.cashflowOverrides && typeof s.cashflowOverrides === "object") {
+        setCashflowOverrides(s.cashflowOverrides);
+      }
     }
 
     loadData();
@@ -189,6 +195,8 @@ export function DashboardClient() {
         yearlyPensionSavings,
         showWealthPlanner,
         showPensionPlanner,
+        pensionSavingsOverrides,
+        cashflowOverrides,
       }),
     [
       blocks,
@@ -201,6 +209,8 @@ export function DashboardClient() {
       yearlyPensionSavings,
       showWealthPlanner,
       showPensionPlanner,
+      pensionSavingsOverrides,
+      cashflowOverrides,
     ]
   );
   const dirty = savedSignature !== null && savedSignature !== stateSignature;
@@ -331,8 +341,9 @@ export function DashboardClient() {
     years.forEach((year) => {
       // Column C: estimated returns = pension balance x average yield % pension funds
       const returns = runningBalance * (pensionYield / 100);
-      // Column D: yearly pension savings to retirement (shown until birth year + retirement age)
-      const savings = year <= retirementYear ? yearlyPensionSavings : 0;
+      // Column D: yearly pension and savings to retirement — editable per year, falling
+      // back to the flat default for any year the user hasn't overridden.
+      const savings = year <= retirementYear ? pensionSavingsOverrides[year] ?? yearlyPensionSavings : 0;
 
       // Column E: yearly spend after inflation (0 until retirement, then inflation-adjusted each year)
       let spend = 0;
@@ -343,16 +354,17 @@ export function DashboardClient() {
       }
       previousSpend = spend;
 
-      const override = projectionOverrides[year];
+      // Column B: pension and reserves is always computed — balance[N] = balance[N-1] +
+      // returns[N] + savings[N] — never accepted as direct input.
       projections.push({
         year,
-        balance: typeof override === "number" ? Math.round(override) : Math.round(runningBalance),
+        balance: Math.round(runningBalance),
         returns: Math.round(returns),
         savings: Math.round(savings),
         spend: Math.round(spend),
       });
 
-      // Column B: until retirement balance grows by returns + savings, from retirement by returns - spend
+      // Until retirement balance grows by returns + savings, from retirement by returns - spend
       if (year < retirementYear) {
         runningBalance = runningBalance + returns + savings;
       } else {
@@ -361,7 +373,7 @@ export function DashboardClient() {
     });
 
     return projections;
-  }, [birthYear, eValue, pensionYield, yearlyExpenses, yearlyPensionSavings, retirementYear, inflationRate, projectionOverrides]);
+  }, [birthYear, eValue, pensionYield, yearlyExpenses, yearlyPensionSavings, retirementYear, inflationRate, pensionSavingsOverrides]);
 
   const assetProjections = useMemo(() => {
     const startYear = 2027;
@@ -374,21 +386,24 @@ export function DashboardClient() {
     years.forEach((year) => {
       // Column C: estimated returns = assets/investments x average yield % less liquid assets
       const returns = runningBalance * (illiquidYield / 100);
+      // Cashflow — editable per year, falling back to the flat computed default (net
+      // monthly income minus outgoings, annualized) for any year not overridden.
+      const cashflow = cashflowOverrides[year] ?? yearlyCashflow;
 
-      const override = assetProjectionOverrides[year];
+      // Column B: assets and investments is always computed — balance[N] = balance[N-1] +
+      // returns[N] + cashflow[N] — never accepted as direct input.
       projections.push({
         year,
-        balance: typeof override === "number" ? Math.round(override) : Math.round(runningBalance),
+        balance: Math.round(runningBalance),
         returns: Math.round(returns),
-        cashflow: Math.round(yearlyCashflow),
+        cashflow: Math.round(cashflow),
       });
 
-      // Column B: assets/investments grow by returns + yearly cashflow until retirement
-      runningBalance = runningBalance + returns + yearlyCashflow;
+      runningBalance = runningBalance + returns + cashflow;
     });
 
     return projections;
-  }, [retirementYear, cValue, illiquidYield, summary.cashflow, assetProjectionOverrides]);
+  }, [retirementYear, cValue, illiquidYield, summary.cashflow, cashflowOverrides]);
 
 useEffect(() => {
     const buildChart = (root: am5.Root, data: Array<{ year: number; value: number }>, color: number) => {
@@ -520,6 +535,8 @@ useEffect(() => {
           strokeWidth,
           showWealthPlanner,
           showPensionPlanner,
+          pensionSavingsOverrides,
+          cashflowOverrides,
         },
       }),
     });
@@ -1166,9 +1183,9 @@ Begin your response with Section 1.
                       <thead>
                         <tr>
                           <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
-                          <th className="border-b border-slate-200 pb-3 font-medium">Pension and reserves</th>
+                          <th className="border-b border-slate-200 pb-3 font-medium">Pension and reserves (computed)</th>
                           <th className="border-b border-slate-200 pb-3 text-right font-medium">Estimated returns</th>
-                          <th className="border-b border-slate-200 pb-3 text-right font-medium">Yearly pension savings</th>
+                          <th className="border-b border-slate-200 pb-3 text-right font-medium">{guide.yearlyPensionSavingsLabel}</th>
                           <th className="border-b border-slate-200 pb-3 text-right font-medium">Yearly spend after inflation</th>
                         </tr>
                       </thead>
@@ -1177,20 +1194,31 @@ Begin your response with Section 1.
                           <tr key={projection.year} className="border-b border-slate-200 last:border-none">
                             <td className="py-3 pr-4 font-medium text-slate-900">{projection.year}</td>
                             <td className="py-3">
-                              <input
-                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
-                                type="number"
-                                value={projection.balance}
-                                onChange={(event) =>
-                                  setProjectionOverrides((current) => ({
-                                    ...current,
-                                    [projection.year]: Number(event.target.value || 0),
-                                  }))
-                                }
-                              />
+                              <div
+                                className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm tabular-nums text-slate-500"
+                                title="Computed from last year's balance, estimated returns, and yearly pension and savings — not directly editable."
+                              >
+                                {projection.balance.toLocaleString("en-US")}
+                              </div>
                             </td>
                             <td className="py-3 text-right tabular-nums text-slate-900">{projection.returns.toLocaleString("en-US")}</td>
-                            <td className="py-3 text-right tabular-nums text-slate-600">{projection.savings ? projection.savings.toLocaleString("en-US") : "—"}</td>
+                            <td className="py-3">
+                              {projection.year <= retirementYear ? (
+                                <input
+                                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-right text-sm outline-none"
+                                  type="number"
+                                  value={projection.savings}
+                                  onChange={(event) =>
+                                    setPensionSavingsOverrides((current) => ({
+                                      ...current,
+                                      [projection.year]: Number(event.target.value || 0),
+                                    }))
+                                  }
+                                />
+                              ) : (
+                                <span className="block text-right tabular-nums text-slate-400">—</span>
+                              )}
+                            </td>
                             <td className="py-3 text-right tabular-nums text-slate-600">{projection.spend ? projection.spend.toLocaleString("en-US") : "—"}</td>
                           </tr>
                         ))}
@@ -1214,9 +1242,9 @@ Begin your response with Section 1.
                       <thead>
                         <tr>
                           <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
-                          <th className="border-b border-slate-200 pb-3 font-medium">Assets and investments</th>
+                          <th className="border-b border-slate-200 pb-3 font-medium">Assets and investments (computed)</th>
                           <th className="border-b border-slate-200 pb-3 text-right font-medium">Estimated returns</th>
-                          <th className="border-b border-slate-200 pb-3 text-right font-medium">Cashflow</th>
+                          <th className="border-b border-slate-200 pb-3 text-right font-medium">{guide.cashflowLabel}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1224,21 +1252,28 @@ Begin your response with Section 1.
                           <tr key={projection.year} className="border-b border-slate-200 last:border-none">
                             <td className="py-3 pr-4 font-medium text-slate-900">{projection.year}</td>
                             <td className="py-3">
+                              <div
+                                className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm tabular-nums text-slate-500"
+                                title="Computed from last year's balance, estimated returns, and cashflow — not directly editable."
+                              >
+                                {projection.balance.toLocaleString("en-US")}
+                              </div>
+                            </td>
+                            <td className="py-3 text-right tabular-nums text-slate-900">{projection.returns.toLocaleString("en-US")}</td>
+                            <td className="py-3">
                               <input
-                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-right text-sm outline-none"
                                 type="number"
-                                value={projection.balance}
+                                value={projection.cashflow}
                                 onChange={(event) => {
                                   const nextValue = Number(event.target.value || 0);
-                                  setAssetProjectionOverrides((current) => ({
+                                  setCashflowOverrides((current) => ({
                                     ...current,
                                     [projection.year]: nextValue,
                                   }));
                                 }}
                               />
                             </td>
-                            <td className="py-3 text-right tabular-nums text-slate-900">{projection.returns.toLocaleString("en-US")}</td>
-                            <td className="py-3 text-right tabular-nums text-slate-600">{projection.cashflow.toLocaleString("en-US")}</td>
                           </tr>
                         ))}
                       </tbody>

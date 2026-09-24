@@ -30,9 +30,35 @@ export const DEFAULT_SETTINGS = {
   strokeWidth: 3,
   showWealthPlanner: true,
   showPensionPlanner: true,
+  // Per-year overrides for the two projection tables' now-editable input columns
+  // (year -> value). Sparse: a year with no entry falls back to the flat default
+  // (yearlyPensionSavings / computed cashflow). The projected balance columns
+  // ("pension and reserves", "assets and investments") are always computed from
+  // these — they are never stored directly.
+  pensionSavingsOverrides: {} as Record<number, number>,
+  cashflowOverrides: {} as Record<number, number>,
 };
 
 export type PlannerSettings = typeof DEFAULT_SETTINGS;
+
+// Used server-side (see src/app/api/wealth/route.ts) so the two per-year override
+// maps can only ever contain finite year -> number entries, regardless of what a
+// client sends. There is no field for a "computed total" (balance) anywhere in
+// PlannerSettings, so there is nothing for a client to inject one into.
+export function sanitizeYearOverrides(input: unknown): Record<number, number> {
+  const result: Record<number, number> = {};
+  if (!input || typeof input !== "object") return result;
+
+  for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+    const year = Number(key);
+    const amount = Number(value);
+    if (!Number.isInteger(year) || year < 1900 || year > 3000) continue;
+    if (!Number.isFinite(amount)) continue;
+    result[year] = Math.round(amount);
+  }
+
+  return result;
+}
 
 export const CURRENCIES = ["USD", "EUR", "GBP", "DKK", "SEK", "NOK"] as const;
 

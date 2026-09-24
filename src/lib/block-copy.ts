@@ -824,6 +824,8 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     sectionNotes: "Notes",
     disclaimer: "PlanHumans is a planning tool, not financial advice. Forecasts are simple projections based on the assumptions you set — they are not a prediction of what will happen.",
     premiumNote: "Some features (adding goals, unlimited AI suggestions) are for premium users only. Donate 10 USD to unlock premium for 1 year. PlanHumans is a non-profit — donations go toward making the solution better, more secure, and covering advertising expenses.",
+    yearlyPensionSavingsLabel: "Yearly pension and savings",
+    cashflowLabel: "Cashflow",
   },
   UK: {
     headline: "How to fill in your wealth blocks",
@@ -841,6 +843,8 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     sectionNotes: "Notes",
     disclaimer: "PlanHumans is a planning tool, not financial advice. Forecasts are simple projections based on the assumptions you set — they are not a prediction of what will happen.",
     premiumNote: "Some features (adding goals, unlimited AI suggestions) are for premium users only. Donate 10 USD to unlock premium for 1 year. PlanHumans is a non-profit — donations go toward making the solution better, more secure, and covering advertising expenses.",
+    yearlyPensionSavingsLabel: "Yearly pension and savings",
+    cashflowLabel: "Cashflow",
   },
   DK: {
     headline: "Sådan udfylder du dine formueblokke",
@@ -858,6 +862,8 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     sectionNotes: "Noter",
     disclaimer: "PlanHumans er et planlægningsværktøj, ikke finansiel rådgivning. Prognoserne er simple fremskrivninger baseret på de forudsætninger, du selv sætter — ikke en forudsigelse af hvad der sker.",
     premiumNote: "Nogle funktioner (tilføjelse af mål, ubegrænsede AI-forslag) er kun for premium-brugere. Donér 10 USD for at låse premium op i 1 år. PlanHumans er non-profit — donationer går til at gøre løsningen bedre, mere sikker og til at dække annonceudgifter.",
+    yearlyPensionSavingsLabel: "Årlig pension og opsparing",
+    cashflowLabel: "Pengestrøm",
   },
   SE: {
     headline: "Så här fyller du i dina förmögenhetsblock",
@@ -875,6 +881,8 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     sectionNotes: "Anteckningar",
     disclaimer: "PlanHumans är ett planeringsverktyg, inte finansiell rådgivning. Prognoserna är enkla framskrivningar baserade på de antaganden du själv anger — inte en förutsägelse om vad som kommer att hända.",
     premiumNote: "Vissa funktioner (att lägga till mål, obegränsade AI-förslag) är endast för premiumanvändare. Donera 10 USD för att låsa upp premium i 1 år. PlanHumans är en ideell tjänst — donationer går till att göra lösningen bättre, säkrare och till att täcka annonskostnader.",
+    yearlyPensionSavingsLabel: "Årlig pension och sparande",
+    cashflowLabel: "Kassaflöde",
   },
   NO: {
     headline: "Slik fyller du ut formuesblokkene dine",
@@ -892,6 +900,8 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     sectionNotes: "Notater",
     disclaimer: "PlanHumans er et planleggingsverktøy, ikke finansiell rådgivning. Prognosene er enkle framskrivninger basert på forutsetningene du selv setter — ikke en spådom om hva som vil skje.",
     premiumNote: "Enkelte funksjoner (å legge til mål, ubegrensede AI-forslag) er kun for premium-brukere. Doner 10 USD for å låse opp premium i 1 år. PlanHumans er ideelt — donasjoner går til å gjøre løsningen bedre, sikrere og til å dekke annonsekostnader.",
+    yearlyPensionSavingsLabel: "Årlig pensjon og sparing",
+    cashflowLabel: "Kontantstrøm",
   },
   FI: {
     headline: "Näin täytät varallisuuslohkosi",
@@ -909,5 +919,7 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     sectionNotes: "Muistiinpanot",
     disclaimer: "PlanHumans on suunnittelutyökalu, ei sijoitusneuvontaa. Ennusteet ovat yksinkertaisia laskelmia asettamillasi oletuksilla — eivät ennuste siitä mitä tapahtuu.",
     premiumNote: "Jotkin ominaisuudet (tavoitteiden lisääminen, rajattomat tekoälyehdotukset) ovat vain premium-käyttäjille. Lahjoita 10 USD avataksesi premiumin vuodeksi. PlanHumans on voittoa tavoittelematon — lahjoitukset menevät ratkaisun parantamiseen, turvallisuuden lisäämiseen ja mainoskulujen kattamiseen.",
+    yearlyPensionSavingsLabel: "Vuotuinen eläke ja säästö",
+    cashflowLabel: "Kassavirta",
   },
 };

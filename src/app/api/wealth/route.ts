@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { calculateWealth, createDefaultBlocks, getUserFromRequest, MAX_ROWS, normalizeBlockRows } from "@/lib/auth";
-import { DEFAULT_SETTINGS, normalizeCurrency, type PlannerSettings } from "@/lib/wealth";
+import { DEFAULT_SETTINGS, normalizeCurrency, sanitizeYearOverrides, type PlannerSettings } from "@/lib/wealth";
 import { isPremiumUser } from "@/lib/premium";
 import prisma from "@/lib/prisma";
 
@@ -77,6 +77,13 @@ export async function POST(request: Request) {
     }
 
     const settings = { ...DEFAULT_SETTINGS, ...((body.settings as Partial<PlannerSettings>) ?? {}) };
+    // The two projection tables' balance columns ("pension and reserves", "assets and
+    // investments") are always derived, never stored — there is no field for them here
+    // to begin with. These two per-year input maps are the only pieces of that feature
+    // written to the database, and they're re-validated here regardless of what the
+    // client claims, so a direct API call can't smuggle in bad keys/values.
+    settings.pensionSavingsOverrides = sanitizeYearOverrides((body.settings as Partial<PlannerSettings> | undefined)?.pensionSavingsOverrides);
+    settings.cashflowOverrides = sanitizeYearOverrides((body.settings as Partial<PlannerSettings> | undefined)?.cashflowOverrides);
     const currency = body.currency ? normalizeCurrency(body.currency) : undefined;
 
     if (currency) {
