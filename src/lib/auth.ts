@@ -11,6 +11,7 @@ export type AppUser = {
   name: string | null;
   country: string;
   currency: string;
+  language: string | null;
   emailVerified: boolean;
   isAdmin: boolean;
   donated: boolean;

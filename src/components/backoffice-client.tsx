@@ -2,13 +2,42 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CURRENCIES } from "@/lib/wealth";
+import { COUNTRY_CODES, CURRENCIES } from "@/lib/wealth";
 import { isPremiumUser } from "@/lib/premium";
 
 const MAX_LOGO_BYTES = 500 * 1024;
 
 type SponsorDraft = { link: string; text: string; logoData: string | null };
 const EMPTY_SPONSOR_DRAFT: SponsorDraft = { link: "", text: "", logoData: null };
+
+type CountryFactsDraft = {
+  inflationRate: string;
+  pensionYieldPct: string;
+  pensionAge: string;
+  pensionTypeNames: string;
+  factoids: string;
+  housingMarketOutlook: string;
+};
+const EMPTY_COUNTRY_FACTS_DRAFT: CountryFactsDraft = {
+  inflationRate: "",
+  pensionYieldPct: "",
+  pensionAge: "",
+  pensionTypeNames: "",
+  factoids: "",
+  housingMarketOutlook: "",
+};
+type CountryFactsRow = {
+  country: string;
+  inflationRate: number | null;
+  pensionYieldPct: number | null;
+  pensionAge: number | null;
+  pensionTypeNames: string | null;
+  factoids: string | null;
+  housingMarketOutlook: string | null;
+  asOf: string | null;
+  updatedBy: string | null;
+  updatedAt: string | null;
+};
 
 type UserRow = {
   id: string;
@@ -56,6 +85,10 @@ export function BackofficeClient() {
   const [savingSponsor, setSavingSponsor] = useState<string | null>(null);
   const [becameUserDrafts, setBecameUserDrafts] = useState<Record<string, string>>({});
   const [savingBecameUserDate, setSavingBecameUserDate] = useState<string | null>(null);
+  const [countryFactsRows, setCountryFactsRows] = useState<Record<string, CountryFactsRow>>({});
+  const [countryFactsDrafts, setCountryFactsDrafts] = useState<Record<string, CountryFactsDraft>>({});
+  const [countryFactsMessage, setCountryFactsMessage] = useState<string | null>(null);
+  const [savingCountryFacts, setSavingCountryFacts] = useState<string | null>(null);
 
   async function loadSponsors() {
     const response = await fetch("/api/backoffice/sponsors");
@@ -73,6 +106,58 @@ export function BackofficeClient() {
   useEffect(() => {
     loadSponsors();
   }, []);
+
+  async function loadCountryFacts() {
+    const response = await fetch("/api/backoffice/country-facts");
+    if (!response.ok) return;
+    const data = await response.json();
+    const rows: CountryFactsRow[] = data.countryFacts ?? [];
+    const byCountry: Record<string, CountryFactsRow> = {};
+    const drafts: Record<string, CountryFactsDraft> = {};
+    for (const row of rows) {
+      byCountry[row.country] = row;
+      drafts[row.country] = {
+        inflationRate: row.inflationRate != null ? String(row.inflationRate) : "",
+        pensionYieldPct: row.pensionYieldPct != null ? String(row.pensionYieldPct) : "",
+        pensionAge: row.pensionAge != null ? String(row.pensionAge) : "",
+        pensionTypeNames: row.pensionTypeNames ?? "",
+        factoids: row.factoids ?? "",
+        housingMarketOutlook: row.housingMarketOutlook ?? "",
+      };
+    }
+    setCountryFactsRows(byCountry);
+    setCountryFactsDrafts(drafts);
+  }
+
+  useEffect(() => {
+    loadCountryFacts();
+  }, []);
+
+  function updateCountryFactsDraft(country: string, patch: Partial<CountryFactsDraft>) {
+    setCountryFactsDrafts((prev) => ({ ...prev, [country]: { ...(prev[country] ?? EMPTY_COUNTRY_FACTS_DRAFT), ...patch } }));
+  }
+
+  async function saveCountryFacts(country: string) {
+    const draft = countryFactsDrafts[country] ?? EMPTY_COUNTRY_FACTS_DRAFT;
+    setSavingCountryFacts(country);
+    const response = await fetch("/api/backoffice/country-facts", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        country,
+        inflationRate: draft.inflationRate.trim() ? Number(draft.inflationRate) : null,
+        pensionYieldPct: draft.pensionYieldPct.trim() ? Number(draft.pensionYieldPct) : null,
+        pensionAge: draft.pensionAge.trim() ? Number(draft.pensionAge) : null,
+        pensionTypeNames: draft.pensionTypeNames,
+        factoids: draft.factoids,
+        housingMarketOutlook: draft.housingMarketOutlook,
+      }),
+    });
+    const data = await response.json();
+    setCountryFactsMessage(data.message ?? data.error ?? "Action complete.");
+    setSavingCountryFacts(null);
+    if (response.ok) await loadCountryFacts();
+  }
 
   function updateSponsorDraft(currency: string, patch: Partial<SponsorDraft>) {
     setSponsorDrafts((prev) => ({ ...prev, [currency]: { ...(prev[currency] ?? EMPTY_SPONSOR_DRAFT), ...patch } }));
@@ -353,6 +438,111 @@ export function BackofficeClient() {
                       onClick={() => removeSponsor(currency)}
                     >
                       Remove
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <h2 className="text-xl font-semibold text-slate-900">Country facts</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Curated reference data folded into the AI-prompt&apos;s country context. Leave a field blank to fall back to the
+            built-in structural facts for that country.
+          </p>
+          {countryFactsMessage && (
+            <p className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{countryFactsMessage}</p>
+          )}
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {COUNTRY_CODES.map((country) => {
+              const draft = countryFactsDrafts[country] ?? EMPTY_COUNTRY_FACTS_DRAFT;
+              const row = countryFactsRows[country];
+              return (
+                <div key={country} className="rounded-2xl border border-slate-200 p-4">
+                  <p className="text-sm font-semibold text-slate-900">{country}</p>
+
+                  <label className="mt-3 block text-xs font-medium text-slate-600">
+                    Inflation rate (%)
+                    <input
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                      value={draft.inflationRate}
+                      onChange={(event) => updateCountryFactsDraft(country, { inflationRate: event.target.value })}
+                      placeholder="e.g. 2.3"
+                      inputMode="decimal"
+                    />
+                  </label>
+
+                  <label className="mt-2 block text-xs font-medium text-slate-600">
+                    Typical pension fund yield (%)
+                    <input
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                      value={draft.pensionYieldPct}
+                      onChange={(event) => updateCountryFactsDraft(country, { pensionYieldPct: event.target.value })}
+                      placeholder="e.g. 5"
+                      inputMode="decimal"
+                    />
+                  </label>
+
+                  <label className="mt-2 block text-xs font-medium text-slate-600">
+                    Typical retirement age
+                    <input
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                      value={draft.pensionAge}
+                      onChange={(event) => updateCountryFactsDraft(country, { pensionAge: event.target.value })}
+                      placeholder="e.g. 67"
+                      inputMode="numeric"
+                    />
+                  </label>
+
+                  <label className="mt-2 block text-xs font-medium text-slate-600">
+                    Pension/account product names
+                    <textarea
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                      rows={2}
+                      value={draft.pensionTypeNames}
+                      onChange={(event) => updateCountryFactsDraft(country, { pensionTypeNames: event.target.value })}
+                      placeholder="e.g. Folkepension, ATP, Ratepension"
+                    />
+                  </label>
+
+                  <label className="mt-2 block text-xs font-medium text-slate-600">
+                    Factoids
+                    <textarea
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                      rows={3}
+                      value={draft.factoids}
+                      onChange={(event) => updateCountryFactsDraft(country, { factoids: event.target.value })}
+                      placeholder="Short bullet-style facts about pensions, tax, etc."
+                    />
+                  </label>
+
+                  <label className="mt-2 block text-xs font-medium text-slate-600">
+                    Housing market outlook
+                    <textarea
+                      className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                      rows={2}
+                      value={draft.housingMarketOutlook}
+                      onChange={(event) => updateCountryFactsDraft(country, { housingMarketOutlook: event.target.value })}
+                      placeholder="House / apartment / land / city development notes"
+                    />
+                  </label>
+
+                  <p className="mt-3 text-xs text-slate-400">
+                    {row?.asOf
+                      ? `As of ${formatDate(row.asOf)} · updated by ${row.updatedBy ?? "—"}`
+                      : "Not yet edited — using built-in fallback facts."}
+                  </p>
+
+                  <div className="mt-3 flex gap-2">
+                    <button
+                      type="button"
+                      className="rounded-full bg-slate-900 px-3 py-1.5 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      disabled={savingCountryFacts === country}
+                      onClick={() => saveCountryFacts(country)}
+                    >
+                      {savingCountryFacts === country ? "Saving..." : "Save"}
                     </button>
                   </div>
                 </div>

@@ -87,6 +87,11 @@ export function normalizeCurrency(currency: string) {
   return "DKK";
 }
 
+// The full set of country/language codes the app actually has copy for (block-copy.ts).
+// Also doubles as the language code space — language selection is one of these same
+// codes, independent of the user's country.
+export const COUNTRY_CODES = ["US", "UK", "DK", "SE", "NO", "FI"] as const;
+
 export const COUNTRY_LANGUAGE: Record<string, { name: string; language: string }> = {
   US: { name: "United States", language: "English" },
   UK: { name: "United Kingdom", language: "English" },

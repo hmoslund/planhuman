@@ -1,8 +1,28 @@
 import { NextResponse } from "next/server";
 import { calculateWealth, createDefaultBlocks, getUserFromRequest, MAX_ROWS, normalizeBlockRows } from "@/lib/auth";
-import { DEFAULT_SETTINGS, normalizeCurrency, sanitizeYearOverrides, type PlannerSettings } from "@/lib/wealth";
+import { COUNTRY_CODES, DEFAULT_SETTINGS, normalizeCurrency, sanitizeYearOverrides, type PlannerSettings } from "@/lib/wealth";
 import { isPremiumUser } from "@/lib/premium";
+import { getCountryFacts } from "@/lib/country-facts";
 import prisma from "@/lib/prisma";
+
+function isValidLanguage(value: unknown): value is (typeof COUNTRY_CODES)[number] {
+  return typeof value === "string" && (COUNTRY_CODES as readonly string[]).includes(value);
+}
+
+async function getEffectiveCountryFacts(country: string) {
+  const dbFacts = await prisma.countryFacts.findUnique({ where: { country } });
+  const fallback = getCountryFacts(country);
+
+  return {
+    factoids: dbFacts?.factoids || fallback.facts,
+    pensionTypeNames: dbFacts?.pensionTypeNames || fallback.localTerms,
+    inflationRate: dbFacts?.inflationRate ?? null,
+    pensionYieldPct: dbFacts?.pensionYieldPct ?? null,
+    pensionAge: dbFacts?.pensionAge ?? null,
+    housingMarketOutlook: dbFacts?.housingMarketOutlook ?? null,
+    asOf: dbFacts?.asOf ?? null,
+  };
+}
 
 export async function GET(request: Request) {
   try {
@@ -14,6 +34,7 @@ export async function GET(request: Request) {
     const record = await prisma.wealthRecord.findFirst({ where: { userId: user.id } });
     const blocks = (record?.blocks as Record<string, unknown>) ?? createDefaultBlocks();
     const settings = { ...DEFAULT_SETTINGS, ...((record?.settings as Record<string, unknown>) ?? {}) };
+    const countryFacts = await getEffectiveCountryFacts(user.country);
 
     return NextResponse.json({
       user: {
@@ -23,6 +44,7 @@ export async function GET(request: Request) {
         name: user.name,
         country: user.country,
         currency: normalizeCurrency(user.currency),
+        language: user.language,
         emailVerified: user.emailVerified,
         isAdmin: user.isAdmin,
         donated: user.donated,
@@ -30,6 +52,7 @@ export async function GET(request: Request) {
         type: user.type,
         aiPromptCount: user.aiPromptCount,
       },
+      countryFacts,
       record: {
         id: record?.id ?? null,
         blocks,
@@ -85,11 +108,14 @@ export async function POST(request: Request) {
     settings.pensionSavingsOverrides = sanitizeYearOverrides((body.settings as Partial<PlannerSettings> | undefined)?.pensionSavingsOverrides);
     settings.cashflowOverrides = sanitizeYearOverrides((body.settings as Partial<PlannerSettings> | undefined)?.cashflowOverrides);
     const currency = body.currency ? normalizeCurrency(body.currency) : undefined;
+    // "language" is explicit user intent, distinct from "not sent": null means the user
+    // picked "Automatic" and wants to fall back to their country's default language again.
+    const language = "language" in body ? (isValidLanguage(body.language) ? body.language : null) : undefined;
 
-    if (currency) {
+    if (currency || language !== undefined) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { currency },
+        data: { ...(currency ? { currency } : {}), ...(language !== undefined ? { language } : {}) },
       });
     }
 

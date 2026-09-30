@@ -6,10 +6,9 @@ import * as am5 from "@amcharts/amcharts5";
 import * as am5xy from "@amcharts/amcharts5/xy";
 import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import { curveMonotoneX } from "d3-shape";
-import { calculateWealth, getCountryInfo, normalizeCurrency, CURRENCIES, toCurrency } from "@/lib/wealth";
+import { calculateWealth, getCountryInfo, normalizeCurrency, COUNTRY_CODES, CURRENCIES, toCurrency } from "@/lib/wealth";
 import { blockTranslations, guideCopy, type BlockCopy, type CountryCode } from "@/lib/block-copy";
 import { isPremiumUser } from "@/lib/premium";
-import { getCountryFacts } from "@/lib/country-facts";
 
 type Row = { id: string; identifier: string; value: number; detail: string; completed?: boolean };
 type Blocks = Record<string, Row[]>;
@@ -21,12 +20,23 @@ type UserProfile = {
   name: string | null;
   country: string;
   currency: string;
+  language: string | null;
   emailVerified: boolean;
   isAdmin: boolean;
   donated: boolean;
   userNumber: number | null;
   type: string | null;
   aiPromptCount: number;
+};
+
+type CountryFacts = {
+  factoids: string;
+  pensionTypeNames: string;
+  inflationRate: number | null;
+  pensionYieldPct: number | null;
+  pensionAge: number | null;
+  housingMarketOutlook: string | null;
+  asOf: string | null;
 };
 
 const FREE_AI_PROMPT_LIMIT = 3;
@@ -50,6 +60,15 @@ const blockMeta = [
   { key: "G", title: "Goals and Goal status", blurb: "What you are saving towards." },
   { key: "H", title: "My notes", blurb: "Anything the numbers do not capture." },
   { key: "I", title: "My notes", blurb: "Anything the numbers do not capture." },
+];
+
+const LANGUAGE_LABELS: Array<[CountryCode, string]> = [
+  ["US", "English (US)"],
+  ["UK", "English (UK)"],
+  ["DK", "Dansk"],
+  ["SE", "Svenska"],
+  ["NO", "Norsk"],
+  ["FI", "Suomi"],
 ];
 
 function getBlockCopy(key: string, language: CountryCode) {
@@ -110,8 +129,12 @@ export function DashboardClient() {
   const [message, setMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState<CountryCode>("US");
+  // "auto" means "use whatever language the user's country implies" — kept distinct from
+  // a concrete code so saving can tell the API to clear the stored preference (write null)
+  // rather than pinning today's derived value.
+  const [languageChoice, setLanguageChoice] = useState<CountryCode | "auto">("auto");
   const [currency, setCurrency] = useState<string>("DKK");
+  const [countryFacts, setCountryFacts] = useState<CountryFacts | null>(null);
   const [showWealthPlanner, setShowWealthPlanner] = useState(true);
   const [showPensionPlanner, setShowPensionPlanner] = useState(true);
   const [birthYear, setBirthYear] = useState(1980);
@@ -143,6 +166,7 @@ export function DashboardClient() {
       setUser(data.user);
       setBlocks(data.record?.blocks ?? createEmptyBlocks());
       if (data.user?.currency) setCurrency(normalizeCurrency(data.user.currency));
+      if (data.countryFacts) setCountryFacts(data.countryFacts);
 
       const s = data.record?.settings ?? {};
       if (typeof s.birthYear === "number") setBirthYear(s.birthYear);
@@ -260,14 +284,22 @@ export function DashboardClient() {
   const cValue = useMemo(() => (blocks.C ?? []).reduce((total, row) => total + Number(row.value || 0), 0), [blocks.C]);
 
   useEffect(() => {
-    if (user && ["US", "UK", "DK", "SE", "NO", "FI"].includes(user.country) && user.country !== selectedCountry) {
-      setSelectedCountry(user.country as CountryCode);
-    }
-  }, [user, selectedCountry]);
+    if (!user) return;
+    const nextChoice = user.language && (COUNTRY_CODES as readonly string[]).includes(user.language) ? (user.language as CountryCode) : "auto";
+    setLanguageChoice((current) => (current === nextChoice ? current : nextChoice));
+  }, [user]);
+
+  // The concrete code block/guide copy actually renders in — "auto" resolves to the
+  // country's default language, exactly like every existing account behaves today.
+  const selectedLanguage = useMemo<CountryCode>(() => {
+    if (languageChoice !== "auto") return languageChoice;
+    const country = user?.country;
+    return country && (COUNTRY_CODES as readonly string[]).includes(country) ? (country as CountryCode) : "UK";
+  }, [languageChoice, user]);
 
   const translatedBlockMeta = useMemo(
-    () => blockMeta.map((meta) => ({ ...meta, ...getBlockCopy(meta.key, selectedCountry) })),
-    [selectedCountry]
+    () => blockMeta.map((meta) => ({ ...meta, ...getBlockCopy(meta.key, selectedLanguage) })),
+    [selectedLanguage]
   );
 
   const wealthBoxOverview = useMemo(() => {
@@ -290,7 +322,7 @@ export function DashboardClient() {
     }));
   }, [blocks, translatedBlockMeta]);
 
-  const guide = useMemo(() => getGuideCopy(selectedCountry), [selectedCountry]);
+  const guide = useMemo(() => getGuideCopy(selectedLanguage), [selectedLanguage]);
 
   // Start with the two blocks every user can answer from memory, and which drive every
   // chart on the page. Then the balance sheet in liquidity order. Rarely-used blocks sit
@@ -524,6 +556,7 @@ useEffect(() => {
       body: JSON.stringify({
         blocks,
         currency,
+        language: languageChoice === "auto" ? null : languageChoice,
         settings: {
           birthYear,
           retirementAge,
@@ -546,7 +579,7 @@ useEffect(() => {
     setMessage(data.message ?? data.error ?? "Saved.");
     if (response.ok) setSavedSignature(stateSignature);
     if (data.record) {
-      setUser((prev) => (prev ? { ...prev, currency } : prev));
+      setUser((prev) => (prev ? { ...prev, currency, language: languageChoice === "auto" ? null : languageChoice } : prev));
     }
   }
 
@@ -556,8 +589,11 @@ useEffect(() => {
   }
 
   const buildAiPrompt = () => {
-    const country = user?.country ?? selectedCountry;
-    const { name, language } = getCountryInfo(country);
+    const country = user?.country ?? "DK";
+    const { name } = getCountryInfo(country);
+    // Uses the live selector, not just the last-saved user.language, so "Build AI prompt"
+    // reflects whatever language is currently chosen even before the user hits Save.
+    const { language } = getCountryInfo(selectedLanguage);
     const sym = (() => {
       switch (currency) {
         case "USD":
@@ -625,7 +661,19 @@ useEffect(() => {
       })
       .join("\n\n") || "(no wealth data entered)";
 
-    const { facts: countryFacts, localTerms } = getCountryFacts(country);
+    // countryFacts comes from /api/wealth — DB-curated fields (admin-edited in backoffice)
+    // layered over the static structural fallback, so an unedited country still reads
+    // exactly as it did before this table existed.
+    const factsLines = [
+      countryFacts?.factoids ?? "- No structured local pension/account reference is available for this country yet.",
+      countryFacts?.inflationRate != null ? `- Current inflation rate: ~${countryFacts.inflationRate}%.` : null,
+      countryFacts?.pensionYieldPct != null ? `- Typical pension fund yield: ~${countryFacts.pensionYieldPct}%.` : null,
+      countryFacts?.pensionAge != null ? `- Typical retirement age: ${countryFacts.pensionAge}.` : null,
+      countryFacts?.housingMarketOutlook ? `- Housing market: ${countryFacts.housingMarketOutlook}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const localTerms = countryFacts?.pensionTypeNames ?? "(none available)";
     const asOf = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
     return `ROLE
@@ -640,7 +688,7 @@ NUMBERS
 - If something you need is missing, list it under data_gaps. Do not guess.
 
 COUNTRY CONTEXT (as of ${asOf}; rules change, be humble)
-${countryFacts}
+${factsLines}
 Use local terms: ${localTerms}. Use local economic and financial advisory context.
 Never mention accounts or products that do not exist in ${name}.
 
@@ -766,6 +814,22 @@ Begin your response with Section 1.
                   {CURRENCIES.map((code) => (
                     <option key={code} value={code}>
                       {code}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-sm text-slate-700">
+                <span className="font-medium">Language</span>
+                <select
+                  className="bg-transparent outline-none"
+                  value={languageChoice}
+                  onChange={(event) => setLanguageChoice(event.target.value as CountryCode | "auto")}
+                  aria-label="Language"
+                >
+                  <option value="auto">Automatic (matches country)</option>
+                  {LANGUAGE_LABELS.map(([code, label]) => (
+                    <option key={code} value={code}>
+                      {label}
                     </option>
                   ))}
                 </select>

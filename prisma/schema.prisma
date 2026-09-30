@@ -15,6 +15,7 @@ model User {
   recoveryCodeHash        String?
   country                 String                   @default("DK")
   currency                String                   @default("kr")
+  language                String?
   emailVerified           Boolean                  @default(false)
   isAdmin                 Boolean                  @default(false)
   donated                 Boolean                  @default(false)
@@ -87,4 +88,20 @@ model Sponsor {
   text      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// One row per supported country code, curated by admins in the backoffice and used to
+// enrich the AI-prompt's country-context section. Starts empty — rows are created lazily
+// on first admin save, not seeded by migration.
+model CountryFacts {
+  country              String    @id
+  inflationRate        Float?    @map("inflation_rate")
+  pensionYieldPct       Float?    @map("pension_yield_pct")
+  pensionAge            Int?      @map("pension_age")
+  pensionTypeNames      String?   @map("pension_type_names")
+  factoids              String?
+  housingMarketOutlook  String?   @map("housing_market_outlook")
+  asOf                  DateTime? @map("as_of") @db.Date
+  updatedBy             String?   @map("updated_by")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 }
