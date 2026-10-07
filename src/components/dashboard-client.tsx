@@ -153,6 +153,7 @@ export function DashboardClient() {
   const [illiquidYield, setIlliquidYield] = useState(4);
   const [inflationRate, setInflationRate] = useState(2);
   const [yearlyPensionSavings, setYearlyPensionSavings] = useState(10000);
+  const [yearlyInvestmentSpend, setYearlyInvestmentSpend] = useState(0);
   const [showGuide, setShowGuide] = useState(false);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [pensionSavingsOverrides, setPensionSavingsOverrides] = useState<Record<number, number>>({});
@@ -185,6 +186,7 @@ export function DashboardClient() {
       if (typeof s.illiquidYield === "number") setIlliquidYield(s.illiquidYield);
       if (typeof s.inflationRate === "number") setInflationRate(s.inflationRate);
       if (typeof s.yearlyPensionSavings === "number") setYearlyPensionSavings(s.yearlyPensionSavings);
+      if (typeof s.yearlyInvestmentSpend === "number") setYearlyInvestmentSpend(s.yearlyInvestmentSpend);
       if (typeof s.smoothingHorizontal === "number") setSmoothingHorizontal(s.smoothingHorizontal);
       if (typeof s.smoothingVertical === "number") setSmoothingVertical(s.smoothingVertical);
       if (typeof s.strokeWidth === "number") setStrokeWidth(s.strokeWidth);
@@ -228,6 +230,7 @@ export function DashboardClient() {
         illiquidYield,
         inflationRate,
         yearlyPensionSavings,
+        yearlyInvestmentSpend,
         showWealthPlanner,
         showPensionPlanner,
         pensionSavingsOverrides,
@@ -242,6 +245,7 @@ export function DashboardClient() {
       illiquidYield,
       inflationRate,
       yearlyPensionSavings,
+      yearlyInvestmentSpend,
       showWealthPlanner,
       showPensionPlanner,
       pensionSavingsOverrides,
@@ -593,6 +597,7 @@ useEffect(() => {
           illiquidYield,
           inflationRate,
           yearlyPensionSavings,
+          yearlyInvestmentSpend,
           smoothingHorizontal,
           smoothingVertical,
           strokeWidth,
@@ -1296,6 +1301,16 @@ Begin your response with Section 1.
                     value={yearlyPensionSavings}
                     onChange={(event) => setYearlyPensionSavings(Number(event.target.value || 0))}
                   />
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">{guide.yearlyInvestmentSpendLabel}</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="number"
+                    value={yearlyInvestmentSpend}
+                    onChange={(event) => setYearlyInvestmentSpend(Number(event.target.value || 0))}
+                  />
+                  <span className="mt-2 block text-xs leading-5 text-slate-500">{guide.yearlyInvestmentSpendHelp}</span>
                 </label>
               </div>
             </div>

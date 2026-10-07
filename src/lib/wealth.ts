@@ -24,6 +24,10 @@ export const DEFAULT_SETTINGS = {
   illiquidYield: 4,
   inflationRate: 2,
   yearlyPensionSavings: 10000,
+  // Optional planning assumption: yearly drawdown from investments after retirement,
+  // on top of pension income. Absent in stored JSON for existing records — the API's
+  // {...DEFAULT_SETTINGS, ...stored} merge makes that resolve to 0.
+  yearlyInvestmentSpend: 0,
   pensionTaxRate: 25,
   smoothingHorizontal: 0.5,
   smoothingVertical: 0.5,

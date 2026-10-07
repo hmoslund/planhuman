@@ -825,6 +825,8 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     disclaimer: "PlanHumans is a planning tool, not financial advice. Forecasts are simple projections based on the assumptions you set — they are not a prediction of what will happen.",
     premiumNote: "Some features (adding goals, unlimited AI suggestions) are for premium users only. Donate 10 USD to unlock premium for 1 year. PlanHumans is a non-profit — donations go toward making the solution better, more secure, and covering advertising expenses.",
     yearlyPensionSavingsLabel: "Yearly pension and savings",
+    yearlyInvestmentSpendLabel: "Yearly spend from investments after retirement",
+    yearlyInvestmentSpendHelp: "How much of your investments you plan to use each year on top of your pension.",
     cashflowLabel: "Cashflow",
   },
   UK: {
@@ -844,6 +846,8 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     disclaimer: "PlanHumans is a planning tool, not financial advice. Forecasts are simple projections based on the assumptions you set — they are not a prediction of what will happen.",
     premiumNote: "Some features (adding goals, unlimited AI suggestions) are for premium users only. Donate 10 USD to unlock premium for 1 year. PlanHumans is a non-profit — donations go toward making the solution better, more secure, and covering advertising expenses.",
     yearlyPensionSavingsLabel: "Yearly pension and savings",
+    yearlyInvestmentSpendLabel: "Yearly spend from investments after retirement",
+    yearlyInvestmentSpendHelp: "How much of your investments you plan to use each year on top of your pension.",
     cashflowLabel: "Cashflow",
   },
   DK: {
@@ -863,6 +867,8 @@ export const guideCopy: Record<CountryCode, Record<string, string>> = {
     disclaimer: "PlanHumans er et planlægningsværktøj, ikke finansiel rådgivning. Prognoserne er simple fremskrivninger baseret på de forudsætninger, du selv sætter — ikke en forudsigelse af hvad der sker.",
     premiumNote: "Nogle funktioner (tilføjelse af mål, ubegrænsede AI-forslag) er kun for premium-brugere. Donér 10 USD for at låse premium op i 1 år. PlanHumans er non-profit — donationer går til at gøre løsningen bedre, mere sikker og til at dække annonceudgifter.",
     yearlyPensionSavingsLabel: "Årlig pension og opsparing",
+    yearlyInvestmentSpendLabel: "Årlig nedsparing af investeringer",
+    yearlyInvestmentSpendHelp: "Hvor meget af dine investeringer du planlægger at bruge hvert år ud over din pension.",
     cashflowLabel: "Pengestrøm",
   },
   SE: {
