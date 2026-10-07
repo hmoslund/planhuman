@@ -10,7 +10,17 @@ import { calculateWealth, getCountryInfo, normalizeCurrency, COUNTRY_CODES, CURR
 import { blockTranslations, guideCopy, type BlockCopy, type CountryCode } from "@/lib/block-copy";
 import { isPremiumUser } from "@/lib/premium";
 
-type Row = { id: string; identifier: string; value: number; detail: string; completed?: boolean };
+type Row = { 
+  id: string; 
+  identifier: string; 
+  value: number; 
+  detail: string; 
+  completed?: boolean;
+  pensionType?: "drawdown" | "annuity" | null;
+  payoutStartAge?: number;
+  payoutYears?: number | "lifelong";
+  annualPayout?: number;
+};
 type Blocks = Record<string, Row[]>;
 
 type UserProfile = {
@@ -143,7 +153,7 @@ export function DashboardClient() {
   const [illiquidYield, setIlliquidYield] = useState(4);
   const [inflationRate, setInflationRate] = useState(2);
   const [yearlyPensionSavings, setYearlyPensionSavings] = useState(10000);
-  const [showGuide, setShowGuide] = useState(true);
+  const [showGuide, setShowGuide] = useState(false);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [pensionSavingsOverrides, setPensionSavingsOverrides] = useState<Record<number, number>>({});
   const [cashflowOverrides, setCashflowOverrides] = useState<Record<number, number>>({});
@@ -334,7 +344,8 @@ export function DashboardClient() {
   const rowCash = pick(["A", "A2"]);
   const rowHome = pick(["D", "D2"]);
   const rowInvestments = pick(["C", "C2"]);
-  const rowPension = pick(["E", "H"]);
+  const rowPension = pick(["E"]);
+  const rowNotes = pick(["H"]);
   const rowAdvanced = pick(["B", "B2"]);
   const rowGoals = pick(["G"]);
 
@@ -346,6 +357,13 @@ export function DashboardClient() {
         if (field === "value") {
           const sanitized = sanitizeNumericInput(value);
           return { ...row, value: Number(sanitized || 0) };
+        }
+        if (field === "pensionType") {
+          return { ...row, pensionType: value === "" ? null : (value as "drawdown" | "annuity") };
+        }
+        if (field === "payoutStartAge" || field === "payoutYears" || field === "annualPayout") {
+          const sanitized = sanitizeNumericInput(value);
+          return { ...row, [field]: sanitized === "" ? undefined : Number(sanitized) };
         }
         return { ...row, [field]: value };
       }),
@@ -534,6 +552,17 @@ useEffect(() => {
           ...(current[blockKey] ?? []),
           blockKey === "G"
             ? { id: crypto.randomUUID(), identifier: "", value: 0, detail: "", completed: false }
+            : blockKey === "E"
+            ? {
+                id: crypto.randomUUID(),
+                identifier: "",
+                value: 0,
+                detail: "",
+                pensionType: "drawdown",
+                payoutStartAge: undefined,
+                payoutYears: undefined,
+                annualPayout: undefined,
+              }
             : { id: crypto.randomUUID(), identifier: "", value: 0, detail: "" },
         ],
       };
@@ -1047,19 +1076,21 @@ Begin your response with Section 1.
 
           {message && <p className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{message}</p>}
 
-          <div className="rounded-[24px] border border-sky-200 bg-sky-50 p-5 shadow-sm">
-            <p className="text-sm font-medium text-sky-700">{guide.headline}</p>
-            <h2 className="mt-1 text-lg font-semibold text-slate-900">{guide.subtitle}</h2>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {[guide.step1, guide.step2, guide.step3, guide.step4, guide.step5].map((step, index) => (
-                <p key={index} className="text-sm leading-6 text-slate-600">
-                  <span className="mr-2 font-semibold text-sky-700">{index + 1}</span>
-                  {step}
-                </p>
-              ))}
+          {showGuide && (
+            <div className="rounded-[24px] border border-sky-200 bg-sky-50 p-5 shadow-sm">
+              <p className="text-sm font-medium text-sky-700">{guide.headline}</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-900">{guide.subtitle}</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                {[guide.step1, guide.step2, guide.step3, guide.step4, guide.step5].map((step, index) => (
+                  <p key={index} className="text-sm leading-6 text-slate-600">
+                    <span className="mr-2 font-semibold text-sky-700">{index + 1}</span>
+                    {step}
+                  </p>
+                ))}
+              </div>
+              <p className="mt-4 border-t border-sky-200 pt-3 text-xs leading-5 text-slate-500">{guide.disclaimer}</p>
             </div>
-            <p className="mt-4 border-t border-sky-200 pt-3 text-xs leading-5 text-slate-500">{guide.disclaimer}</p>
-          </div>
+          )}
 
           <div className="flex justify-end">
             <button
@@ -1094,7 +1125,7 @@ Begin your response with Section 1.
                 <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
             </div>
-            <div className="grid gap-4 xl:grid-cols-2">
+            <div className="grid gap-4">
               {rowPension.map((meta) => (
                 <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
@@ -1115,43 +1146,48 @@ Begin your response with Section 1.
             </div>
 
             {/* AI guided advisory */}
-            <div className="mt-2 rounded-[24px] border border-violet-200 bg-violet-50 p-5 shadow-sm">
-              <p className="text-sm font-medium text-violet-500">AI</p>
-              <h2 className="mt-1 text-lg font-semibold text-violet-900">AI guided advisory</h2>
-              <p className="mt-2 text-sm leading-6 text-violet-700/80">
-                Build your AI prompt. You can copy the ai-text and paste into ChatGpt.com or any other AI agents, and continue your dialogue with the AI agent of your choise. You can edit the text, and ask your burning questions; for example “When can I afford a second car, based on the information”
-              </p>
-              <textarea
-                rows={8}
-                className="mt-4 w-full rounded-2xl border border-violet-200 bg-white p-4 text-sm leading-6 text-slate-800 outline-none"
-                placeholder="Your AI prompt will appear here. You can edit it freely before pasting it into an AI agent."
-                value={aiPrompt}
-                onChange={(event) => setAiPrompt(event.target.value)}
-              />
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <button
-                  className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  onClick={handleBuildAiPrompt}
-                  disabled={aiPromptLocked}
-                  title={aiPromptLocked ? "Locked – only for paying users" : undefined}
-                >
-                  Build AI prompt
-                </button>
-                <button
-                  className="rounded-full border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100"
-                  onClick={() => navigator.clipboard?.writeText(aiPrompt)}
-                >
-                  Copy prompt
-                </button>
-                {aiPromptLocked ? (
-                  <span className="text-xs font-medium text-slate-500">Locked – only for paying users</span>
-                ) : (
-                  !isPremiumUser(user) && (
-                    <span className="text-xs text-violet-700/70">
-                      {Math.max(0, FREE_AI_PROMPT_LIMIT - (user?.aiPromptCount ?? 0))} of {FREE_AI_PROMPT_LIMIT} free uses left
-                    </span>
-                  )
-                )}
+            <div className="grid gap-4 xl:grid-cols-2">
+              {rowNotes.map((meta) => (
+                <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
+              ))}
+              <div className="rounded-[24px] border border-violet-200 bg-violet-50 p-5 shadow-sm">
+                <p className="text-sm font-medium text-violet-500">AI</p>
+                <h2 className="mt-1 text-lg font-semibold text-violet-900">AI guided advisory</h2>
+                <p className="mt-2 text-sm leading-6 text-violet-700/80">
+                  Build your AI prompt. You can copy the ai-text and paste into ChatGpt.com or any other AI agents, and continue your dialogue with the AI agent of your choise. You can edit the text, and ask your burning questions; for example “When can I afford a second car, based on the information”
+                </p>
+                <textarea
+                  rows={8}
+                  className="mt-4 w-full rounded-2xl border border-violet-200 bg-white p-4 text-sm leading-6 text-slate-800 outline-none"
+                  placeholder="Your AI prompt will appear here. You can edit it freely before pasting it into an AI agent."
+                  value={aiPrompt}
+                  onChange={(event) => setAiPrompt(event.target.value)}
+                />
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <button
+                    className="rounded-full bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={handleBuildAiPrompt}
+                    disabled={aiPromptLocked}
+                    title={aiPromptLocked ? "Locked – only for paying users" : undefined}
+                  >
+                    Build AI prompt
+                  </button>
+                  <button
+                    className="rounded-full border border-violet-300 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100"
+                    onClick={() => navigator.clipboard?.writeText(aiPrompt)}
+                  >
+                    Copy prompt
+                  </button>
+                  {aiPromptLocked ? (
+                    <span className="text-xs font-medium text-slate-500">Locked – only for paying users</span>
+                  ) : (
+                    !isPremiumUser(user) && (
+                      <span className="text-xs text-violet-700/70">
+                        {Math.max(0, FREE_AI_PROMPT_LIMIT - (user?.aiPromptCount ?? 0))} of {FREE_AI_PROMPT_LIMIT} free uses left
+                      </span>
+                    )
+                  )}
+                </div>
               </div>
             </div>
 
@@ -1408,6 +1444,7 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
   const rows = blocks[meta.key] ?? [];
   const isGoalBlock = meta.key === "G";
   const goalAddLocked = isGoalBlock && !isPremium;
+  const isPensionBlock = meta.key === "E";
   const isLiabilityBlock = ["A2", "B2", "C2", "D2"].includes(meta.key);
   const isIncomeBlock = meta.key === "J";
   const isExpenseBlock = meta.key === "K";
@@ -1528,6 +1565,98 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                   <span className="sr-only">Delete note</span>
                 </button>
               </div>
+            ) : isPensionBlock ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <input
+                  className="min-w-[11rem] flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none md:max-w-[20rem]"
+                  value={row.identifier}
+                  onChange={(event) => updateRow(meta.key, row.id, "identifier", event.target.value)}
+                  placeholder={meta.placeholder ?? "Identifier"}
+                />
+                <select
+                  className="w-32 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                  value={row.pensionType ?? ""}
+                  onChange={(event) => updateRow(meta.key, row.id, "pensionType", event.target.value)}
+                >
+                  <option value="">No type</option>
+                  <option value="drawdown" title="Ratepension / kapitalpension">Drawdown</option>
+                  <option value="annuity" title="Livrente / folkepension">Annuity</option>
+                </select>
+                <input
+                  className="w-28 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={9}
+                  value={row.value}
+                  onChange={(event) => updateRow(meta.key, row.id, "value", event.target.value)}
+                  placeholder="Value"
+                />
+              {row.pensionType && (
+                <>
+                  <label className="text-xs font-medium whitespace-nowrap text-slate-500" htmlFor={`payout-start-age-${row.id}`}>
+                    From age:
+                  </label>
+                  <input
+                    id={`payout-start-age-${row.id}`}
+                    className="w-20 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={2}
+                    value={row.payoutStartAge ?? ""}
+                    onChange={(event) => updateRow(meta.key, row.id, "payoutStartAge", event.target.value)}
+                    placeholder="e.g. 67"
+                    aria-label="Payout start age"
+                  />
+                </>
+              )}
+              {row.pensionType === "drawdown" && (
+                <>
+                  <label className="text-xs font-medium whitespace-nowrap text-slate-500" htmlFor={`payout-years-${row.id}`}>
+                    Payout years
+                  </label>
+                  <input
+                    id={`payout-years-${row.id}`}
+                    className="w-20 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={2}
+                    value={row.payoutYears ?? ""}
+                    onChange={(event) => updateRow(meta.key, row.id, "payoutYears", event.target.value)}
+                    placeholder="e.g. 10"
+                    aria-label="Years to pay out"
+                  />
+                </>
+              )}
+              {row.pensionType === "annuity" && (
+                <>
+                  <label className="text-xs font-medium whitespace-nowrap text-slate-500" htmlFor={`annual-payout-${row.id}`}>
+                    Annual payout
+                  </label>
+                  <input
+                    id={`annual-payout-${row.id}`}
+                    className="w-28 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={9}
+                    value={row.annualPayout ?? ""}
+                    onChange={(event) => updateRow(meta.key, row.id, "annualPayout", event.target.value)}
+                    placeholder="e.g. 12000"
+                    aria-label="Annual payout"
+                  />
+                </>
+              )}
+              <button
+                className="ml-auto inline-flex items-center justify-center rounded-2xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
+                onClick={() => deleteRow(meta.key, row.id)}
+              >
+                <span aria-hidden="true">🗑</span>
+                <span className="sr-only">Delete pension row</span>
+              </button>
+            </div>
             ) : (
               <div className={`grid gap-3 ${isGoalBlock ? "md:grid-cols-[auto_1.2fr_0.55fr_0.55fr_auto]" : "md:grid-cols-[1.2fr_0.5fr_auto]"}`}>
                 {isGoalBlock && (

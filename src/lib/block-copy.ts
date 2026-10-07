@@ -102,7 +102,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
       examples: "401(k), 403(b), traditional and Roth IRA, pensions from previous employers, HSA earmarked for retirement",
       notHere: "Not here: Social Security. It pays a monthly income for life — it is not a balance you own, and entering it will badly distort your net worth. Same for any old-style pension that promises a monthly amount rather than a pot.",
       tip: "The rule: only pots with a balance. If your statement gives you a monthly amount for life instead of a total, it’s income — leave it out and lower your retirement spending target instead. Enter values before tax; the planner has a separate tax setting.",
-      placeholder: "e.g. 401(k) — Fidelity",
+      placeholder: "e.g. 401(k)",
     },
     // J — Income · core
     J: {
@@ -234,7 +234,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
       examples: "Workplace pension (defined contribution), personal pension or SIPP, pots from previous employers, AVCs",
       notHere: "Not here: the State Pension, or a final-salary (defined benefit) pension. Those pay a monthly income for life — they are not a balance you own, and entering them will badly distort your net worth.",
       tip: "The rule: only pots with a balance. If your statement gives you a monthly amount for life instead of a total, it’s income — leave it out and lower your retirement spending target instead. Enter values before tax; the planner has a separate tax setting.",
-      placeholder: "e.g. Aviva workplace pension (DC)",
+      placeholder: "e.g. Aviva work",
     },
     // J — Income · core
     J: {
@@ -366,7 +366,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
       examples: "Arbejdsmarkedspension, ratepension, aldersopsparing, livrente med opgjort depot, ATP-opsparing, pensioner fra tidligere job",
       notHere: "Ikke her: folkepension og den livsvarige ATP-ydelse. De udbetales som et månedligt beløb — det er ikke en opsparing du ejer, og tallet vil forvrænge din formue.",
       tip: "Reglen: kun opsparinger med en saldo. Giver din opgørelse et månedligt beløb livsvarigt i stedet for et samlet tal, er det indkomst — lad det stå udenfor og sænk i stedet dit forbrugsmål som pensionist. Skriv beløb før skat; planlæggeren har en særskilt skatteindstilling.",
-      placeholder: "f.eks. Arbejdsmarkedspension, PFA",
+      placeholder: "f.eks. PFA",
     },
     // J — Income · core
     J: {
@@ -498,7 +498,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
       examples: "Tjänstepension, privat pensionssparande, premiepension (fondvärdet i orange kuvertet), pensioner från tidigare arbetsgivare",
       notHere: "Inte här: inkomstpensionen i den allmänna pensionen — den redovisas som ett belopp per månad, inte som kapital du äger. Premiepensionen har däremot ett verkligt fondvärde och kan tas med.",
       tip: "Regeln: bara kapital med ett saldo. Ger ditt besked ett månadsbelopp livet ut i stället för en totalsumma är det inkomst — utelämna det och sänk i stället ditt utgiftsmål som pensionär. Skriv belopp före skatt; planeraren har en egen skatteinställning.",
-      placeholder: "t.ex. Tjänstepension, Alecta",
+      placeholder: "t.ex. Alecta",
     },
     // J — Income · core
     J: {
@@ -630,7 +630,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
       examples: "Innskuddspensjon, pensjonskapitalbevis fra tidligere jobber, IPS, egen pensjonssparing",
       notHere: "Ikke her: alderspensjon fra folketrygden. Den utbetales som et månedlig beløp og er ikke kapital du eier. Ytelsespensjon som lover en månedlig sum hører heller ikke hjemme her.",
       tip: "Regelen: bare pensjonskapital med saldo. Gir oversikten din et månedlig beløp livet ut i stedet for en totalsum, er det inntekt — hold det utenfor og senk heller forbruksmålet ditt som pensjonist. Skriv beløp før skatt; planleggeren har en egen skatteinnstilling.",
-      placeholder: "f.eks. Innskuddspensjon, Storebrand",
+      placeholder: "f.eks. IPS",
     },
     // J — Income · core
     J: {
@@ -762,7 +762,7 @@ export const blockTranslations: Record<CountryCode, Record<string, BlockCopy>> =
       examples: "Vapaaehtoinen eläkevakuutus, PS-tili, työnantajan lisäeläkejärjestely, aiempien työnantajien eläkesäästöt",
       notHere: "Ei tähän: työeläke ja kansaneläke. Ne maksetaan kuukausittaisena eläkkeenä eivätkä ne ole omistamaasi pääomaa — niiden kirjaaminen vääristää varallisuutesi pahasti.",
       tip: "Sääntö: vain saldolliset eläkesäästöt. Jos otteesi antaa kuukausisumman eliniäksi kokonaissumman sijaan, kyse on tulosta — jätä se pois ja laske sen sijaan eläkeajan kulutustavoitettasi. Kirjaa summat ennen veroja; suunnittelijassa on erillinen veroasetus.",
-      placeholder: "esim. Vapaaehtoinen eläkevakuutus, Ilmarinen",
+      placeholder: "esim. Ilmarinen",
     },
     // J — Income · core
     J: {
