@@ -100,6 +100,9 @@ export async function POST(request: Request) {
     }
 
     const settings = { ...DEFAULT_SETTINGS, ...((body.settings as Partial<PlannerSettings>) ?? {}) };
+    // "yearlyInvestmentSpend" was replaced by the derived funding rule; drop any stale
+    // copy a cached client might still post so it cannot linger in stored settings.
+    delete (settings as Record<string, unknown>).yearlyInvestmentSpend;
     // The two projection tables' balance columns ("pension and reserves", "assets and
     // investments") are always derived, never stored — there is no field for them here
     // to begin with. These two per-year input maps are the only pieces of that feature

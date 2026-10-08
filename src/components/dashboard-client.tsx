@@ -8,6 +8,7 @@ import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import { curveMonotoneX } from "d3-shape";
 import { calculateWealth, getCountryInfo, normalizeCurrency, COUNTRY_CODES, CURRENCIES, toCurrency } from "@/lib/wealth";
 import { blockTranslations, guideCopy, type BlockCopy, type CountryCode } from "@/lib/block-copy";
+import { buildRetirementIncomeSeries, inflatedYearlySpend, isPensionPayoutConfigured } from "@/lib/retirement";
 import { isPremiumUser } from "@/lib/premium";
 
 type Row = { 
@@ -153,7 +154,12 @@ export function DashboardClient() {
   const [illiquidYield, setIlliquidYield] = useState(4);
   const [inflationRate, setInflationRate] = useState(2);
   const [yearlyPensionSavings, setYearlyPensionSavings] = useState(10000);
-  const [yearlyInvestmentSpend, setYearlyInvestmentSpend] = useState(0);
+  const [pensionTaxRate, setPensionTaxRate] = useState(25);
+  // Expected monthly spend / outgoings after retirement, in today's money — null
+  // until the user sets it, then it falls back to today's monthly outgoings (block K).
+  const [retirementMonthlySpend, setRetirementMonthlySpend] = useState<number | null>(null);
+  // View-only toggle for the retirement-income chart; not part of the saved record.
+  const [taxMode, setTaxMode] = useState<"before" | "after">("after");
   const [showGuide, setShowGuide] = useState(false);
   const [savedSignature, setSavedSignature] = useState<string | null>(null);
   const [pensionSavingsOverrides, setPensionSavingsOverrides] = useState<Record<number, number>>({});
@@ -164,6 +170,7 @@ export function DashboardClient() {
   const [sponsors, setSponsors] = useState<Record<string, { link: string; logoData: string | null; text: string | null }>>({});
   const retirementChartRef = useRef<HTMLDivElement | null>(null);
   const assetChartRef = useRef<HTMLDivElement | null>(null);
+  const incomeChartRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -186,7 +193,8 @@ export function DashboardClient() {
       if (typeof s.illiquidYield === "number") setIlliquidYield(s.illiquidYield);
       if (typeof s.inflationRate === "number") setInflationRate(s.inflationRate);
       if (typeof s.yearlyPensionSavings === "number") setYearlyPensionSavings(s.yearlyPensionSavings);
-      if (typeof s.yearlyInvestmentSpend === "number") setYearlyInvestmentSpend(s.yearlyInvestmentSpend);
+      if (typeof s.pensionTaxRate === "number") setPensionTaxRate(s.pensionTaxRate);
+      setRetirementMonthlySpend(typeof s.retirementMonthlySpend === "number" ? s.retirementMonthlySpend : null);
       if (typeof s.smoothingHorizontal === "number") setSmoothingHorizontal(s.smoothingHorizontal);
       if (typeof s.smoothingVertical === "number") setSmoothingVertical(s.smoothingVertical);
       if (typeof s.strokeWidth === "number") setStrokeWidth(s.strokeWidth);
@@ -230,7 +238,8 @@ export function DashboardClient() {
         illiquidYield,
         inflationRate,
         yearlyPensionSavings,
-        yearlyInvestmentSpend,
+        pensionTaxRate,
+        retirementMonthlySpend,
         showWealthPlanner,
         showPensionPlanner,
         pensionSavingsOverrides,
@@ -245,7 +254,8 @@ export function DashboardClient() {
       illiquidYield,
       inflationRate,
       yearlyPensionSavings,
-      yearlyInvestmentSpend,
+      pensionTaxRate,
+      retirementMonthlySpend,
       showWealthPlanner,
       showPensionPlanner,
       pensionSavingsOverrides,
@@ -310,6 +320,14 @@ export function DashboardClient() {
     const country = user?.country;
     return country && (COUNTRY_CODES as readonly string[]).includes(country) ? (country as CountryCode) : "UK";
   }, [languageChoice, user]);
+
+  // Label for the "auto" entry in the language dropdown: show the language that is
+  // actually in use (the country's default, same resolution as selectedLanguage)
+  // instead of explanatory text, so the dropdown only ever shows language names.
+  const autoLanguageLabel = useMemo(() => {
+    const match = LANGUAGE_LABELS.find(([code]) => code === selectedLanguage);
+    return match ? match[1] : selectedLanguage;
+  }, [selectedLanguage]);
 
   const translatedBlockMeta = useMemo(
     () => blockMeta.map((meta) => ({ ...meta, ...getBlockCopy(meta.key, selectedLanguage) })),
@@ -382,8 +400,14 @@ export function DashboardClient() {
 
 
   const retirementYear = birthYear + retirementAge;
+  // "Today" — inflation compounds from the current year to each projected year.
+  const currentYear = new Date().getFullYear();
   const monthlyExpenses = blocks.K?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0;
   const yearlyExpenses = monthlyExpenses * 12;
+  // Expected monthly spend after retirement, in today's money: the PF Planning focus
+  // assumption once the user sets one, otherwise today's monthly outgoings (block K).
+  const effectiveRetirementMonthlySpend = retirementMonthlySpend ?? Math.round(monthlyExpenses);
+  const retirementYearlySpend = effectiveRetirementMonthlySpend * 12;
 
   const retirementProjections = useMemo(() => {
     const startYear = 2027;
@@ -391,7 +415,6 @@ export function DashboardClient() {
     const years = Array.from({ length: Math.max(endYear - startYear + 1, 0) }, (_, idx) => startYear + idx);
     const projections: Array<{ year: number; balance: number; returns: number; savings: number; spend: number }> = [];
     let runningBalance = eValue;
-    let previousSpend = 0;
 
     years.forEach((year) => {
       // Column C: estimated returns = pension balance x average yield % pension funds
@@ -400,14 +423,10 @@ export function DashboardClient() {
       // back to the flat default for any year the user hasn't overridden.
       const savings = year <= retirementYear ? pensionSavingsOverrides[year] ?? yearlyPensionSavings : 0;
 
-      // Column E: yearly spend after inflation (0 until retirement, then inflation-adjusted each year)
-      let spend = 0;
-      if (year === retirementYear) {
-        spend = yearlyExpenses * (1 + inflationRate / 100);
-      } else if (year > retirementYear) {
-        spend = previousSpend * (1 + inflationRate / 100);
-      }
-      previousSpend = spend;
+      // Yearly spend after inflation — 0 until retirement, then today's yearly expenses
+      // compounded from the current year to this year. No longer a column of its own,
+      // but it is what draws the pension balance down after retirement.
+      const spend = year < retirementYear ? 0 : inflatedYearlySpend(yearlyExpenses, inflationRate, currentYear, year);
 
       // Column B: pension and reserves is always computed — balance[N] = balance[N-1] +
       // returns[N] + savings[N] — never accepted as direct input.
@@ -428,7 +447,7 @@ export function DashboardClient() {
     });
 
     return projections;
-  }, [birthYear, eValue, pensionYield, yearlyExpenses, yearlyPensionSavings, retirementYear, inflationRate, pensionSavingsOverrides]);
+  }, [birthYear, eValue, pensionYield, yearlyExpenses, yearlyPensionSavings, retirementYear, inflationRate, currentYear, pensionSavingsOverrides]);
 
   const assetProjections = useMemo(() => {
     const startYear = 2027;
@@ -459,6 +478,74 @@ export function DashboardClient() {
 
     return projections;
   }, [retirementYear, cValue, illiquidYield, summary.cashflow, cashflowOverrides]);
+
+  // Retirement income vs. spending — all math is pure and lives in lib/retirement.ts:
+  // the spending line comes from the PF Planning focus retirement-spend assumption
+  // (block K outgoings until the user sets one), and every year is financed by
+  // pensions first, carried-forward surplus second, investments only for the rest.
+  const retirementIncome = useMemo(
+    () =>
+      buildRetirementIncomeSeries({
+        pensionRows: blocks.E ?? [],
+        investmentBalance: cValue,
+        yearlyExpenses: retirementYearlySpend,
+        birthYear,
+        retirementAge,
+        currentYear,
+        pensionYieldPct: pensionYield,
+        inflationRatePct: inflationRate,
+        pensionTaxRatePct: pensionTaxRate,
+        afterTax: taxMode === "after",
+        yearlyPensionSavings,
+        pensionSavingsOverrides,
+      }),
+    [
+      blocks.E,
+      cValue,
+      retirementYearlySpend,
+      birthYear,
+      retirementAge,
+      currentYear,
+      pensionYield,
+      inflationRate,
+      pensionTaxRate,
+      taxMode,
+      yearlyPensionSavings,
+      pensionSavingsOverrides,
+    ]
+  );
+
+  // Chart rows: raw numbers per series plus a ready-made tooltip for each year.
+  const retirementIncomeData = useMemo(
+    () =>
+      retirementIncome.map((row) => ({
+        year: String(row.year),
+        annuity: row.annuity,
+        drawdown: row.drawdown,
+        investmentSpend: row.investmentSpend,
+        spending: row.spending,
+        tooltip: [
+          `${row.year} (age ${row.age})`,
+          `Annuity pensions: ${row.annuity.toLocaleString("en-US")}`,
+          `Drawdown pensions: ${row.drawdown.toLocaleString("en-US")}`,
+          `Spend from investments: ${row.investmentSpend.toLocaleString("en-US")}`,
+          `Total income: ${row.totalIncome.toLocaleString("en-US")}`,
+          ...(row.carriedIn > 0
+            ? [`Earlier surplus carried in: ${row.carriedIn.toLocaleString("en-US")}`]
+            : []),
+          `Spending: ${row.spending.toLocaleString("en-US")}`,
+          row.gap > 0
+            ? `Surplus: ${row.gap.toLocaleString("en-US")} (pushed to later years)`
+            : row.gap === 0
+              ? "Fully funded"
+              : `Shortfall: ${Math.abs(row.gap).toLocaleString("en-US")} (investments exhausted)`,
+        ].join("\n"),
+      })),
+    [retirementIncome]
+  );
+
+  // Empty state: no pension row has both a type and a payout start age yet.
+  const pensionIncomeConfigured = (blocks.E ?? []).some(isPensionPayoutConfigured);
 
 useEffect(() => {
     const buildChart = (root: am5.Root, data: Array<{ year: number; value: number }>, color: number) => {
@@ -543,6 +630,92 @@ useEffect(() => {
     };
   }, [retirementProjections, assetProjections, smoothingHorizontal, smoothingVertical, strokeWidth]);
 
+  // Retirement income vs. spending — three stacked income bars plus a spending line,
+  // same amCharts setup (theme, scrollbar, cursor, rotated category labels) as the
+  // charts above.
+  useEffect(() => {
+    const container = incomeChartRef.current;
+    if (!container) return;
+
+    const root = am5.Root.new(container);
+    root.setThemes([am5themes_Animated.new(root)]);
+
+    const chart = root.container.children.push(
+      am5xy.XYChart.new(root, {
+        panX: true,
+        panY: false,
+        wheelX: "panX",
+        wheelY: "none",
+        pinchZoomX: true,
+      })
+    );
+
+    chart.set("scrollbarX", am5.Scrollbar.new(root, { orientation: "horizontal" }));
+
+    const xRenderer = am5xy.AxisRendererX.new(root, { minGridDistance: 20 });
+    const xAxis = chart.xAxes.push(
+      am5xy.CategoryAxis.new(root, {
+        categoryField: "year",
+        renderer: xRenderer,
+      })
+    );
+    xAxis.get("renderer").labels.template.setAll({ rotation: -30, centerY: am5.p50, centerX: am5.p0, paddingTop: 10 });
+    xAxis.data.setAll(retirementIncomeData);
+
+    const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, { renderer: am5xy.AxisRendererY.new(root, {}) }));
+
+    const pushIncomeSeries = (name: string, field: "annuity" | "drawdown" | "investmentSpend", color: number) => {
+      const series = chart.series.push(
+        am5xy.ColumnSeries.new(root, {
+          name,
+          xAxis,
+          yAxis,
+          stacked: true,
+          valueYField: field,
+          categoryXField: "year",
+          tooltip: am5.Tooltip.new(root, { labelText: "{tooltip}" }),
+        })
+      );
+      series.columns.template.setAll({
+        fill: am5.color(color),
+        stroke: am5.color(0xffffff),
+        strokeWidth: 1,
+        fillOpacity: 0.9,
+      });
+      series.data.setAll(retirementIncomeData);
+      return series;
+    };
+
+    pushIncomeSeries("Annuity pensions", "annuity", 0x2563eb);
+    pushIncomeSeries("Drawdown pensions", "drawdown", 0x7c3aed);
+    pushIncomeSeries("Spend from investments", "investmentSpend", 0xf59e0b);
+
+    const spendingSeries = chart.series.push(
+      am5xy.LineSeries.new(root, {
+        name: "Yearly spending",
+        xAxis,
+        yAxis,
+        valueYField: "spending",
+        categoryXField: "year",
+        tooltip: am5.Tooltip.new(root, { labelText: "{tooltip}" }),
+      })
+    );
+    spendingSeries.strokes.template.setAll({ stroke: am5.color(0xef4444), strokeWidth: 3, lineCap: "round" });
+    spendingSeries.set("curveFactory", curveMonotoneX);
+    spendingSeries.data.setAll(retirementIncomeData);
+
+    // Pushed after chartContainer so the default vertical layout puts it at the bottom.
+    const legend = chart.children.push(am5.Legend.new(root, { centerX: am5.p50, x: am5.p50 }));
+    legend.data.setAll(chart.series.values);
+
+    const cursor = chart.set("cursor", am5xy.XYCursor.new(root, { xAxis, yAxis, behavior: "none" }));
+    cursor.lineY.set("visible", false);
+    cursor.lineX.setAll({ strokeOpacity: 0.4, stroke: am5.color(0x94a3b8) });
+
+    chart.appear(1000, 100);
+    return () => root.dispose();
+  }, [retirementIncomeData]);
+
   const addRow = (blockKey: string) => {
     setBlocks((current) => {
       const total = Object.values(current).reduce((n, rows) => n + (rows?.length ?? 0), 0);
@@ -597,7 +770,8 @@ useEffect(() => {
           illiquidYield,
           inflationRate,
           yearlyPensionSavings,
-          yearlyInvestmentSpend,
+          pensionTaxRate,
+          retirementMonthlySpend,
           smoothingHorizontal,
           smoothingVertical,
           strokeWidth,
@@ -860,7 +1034,7 @@ Begin your response with Section 1.
                   onChange={(event) => setLanguageChoice(event.target.value as CountryCode | "auto")}
                   aria-label="Language"
                 >
-                  <option value="auto">Automatic (matches country)</option>
+                  <option value="auto">{autoLanguageLabel}</option>
                   {LANGUAGE_LABELS.map(([code, label]) => (
                     <option key={code} value={code}>
                       {label}
@@ -1227,7 +1401,7 @@ Begin your response with Section 1.
             )}
 
             <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">Planning focus</p>
+              <p className="text-sm font-medium text-slate-500">PF Planning focus</p>
               <p className="mt-2 text-lg font-semibold text-slate-900">Tailor the outlook to your life stage</p>
               <p className="mt-2 text-sm leading-6 text-slate-600">These assumptions help the planner reflect your personal retirement trajectory.</p>
               <div className="mt-4 flex flex-wrap gap-2">
@@ -1294,6 +1468,16 @@ Begin your response with Section 1.
                   />
                 </label>
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Expected tax rate pension funds</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    value={pensionTaxRate}
+                    onChange={(event) => setPensionTaxRate(Number(sanitizeNumericPercent(event.target.value) || 0))}
+                  />
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
                   <span className="mb-2 block font-medium">Yearly pension savings to retirement</span>
                   <input
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
@@ -1303,17 +1487,61 @@ Begin your response with Section 1.
                   />
                 </label>
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                  <span className="mb-2 block font-medium">{guide.yearlyInvestmentSpendLabel}</span>
+                  <span className="mb-2 block font-medium">Expected monthly spend / outgoings after retirement - today&apos;s value</span>
                   <input
                     className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                     type="number"
-                    value={yearlyInvestmentSpend}
-                    onChange={(event) => setYearlyInvestmentSpend(Number(event.target.value || 0))}
+                    value={effectiveRetirementMonthlySpend}
+                    onChange={(event) => setRetirementMonthlySpend(Number(event.target.value || 0))}
                   />
-                  <span className="mt-2 block text-xs leading-5 text-slate-500">{guide.yearlyInvestmentSpendHelp}</span>
+                  <span className="mt-2 block text-xs leading-5 text-slate-500">
+                    Drives the Yearly spending line in the retirement income graph. Defaults to your current monthly outgoings until you set it.
+                  </span>
                 </label>
               </div>
             </div>
+
+            {showPensionPlanner && (
+              <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Retirement income</p>
+                    <h2 className="text-lg font-semibold text-slate-900">Retirement income vs. spending</h2>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
+                      Funding after retirement: every year is paid by your pensions after tax first, then by surplus pushed forward from earlier years, and only the remainder from your investments.
+                    </p>
+                  </div>
+                  {pensionIncomeConfigured && retirementIncome.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        className={`rounded-full px-4 py-2 text-sm font-medium ${taxMode === "before" ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
+                        onClick={() => setTaxMode("before")}
+                      >
+                        Before tax
+                      </button>
+                      <button
+                        className={`rounded-full px-4 py-2 text-sm font-medium ${taxMode === "after" ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
+                        onClick={() => setTaxMode("after")}
+                      >
+                        After tax
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {!pensionIncomeConfigured ? (
+                  <p className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                    Fill in pension start age and payout years for your pensions in block E to see retirement income here.
+                  </p>
+                ) : retirementIncome.length === 0 ? (
+                  <p className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+                    Retirement starts at age 85 or later, so there are no years to chart. Lower the retirement age in PF Planning focus.
+                  </p>
+                ) : (
+                  <div ref={incomeChartRef} className="mt-5 h-[380px]" />
+                )}
+              </div>
+            )}
+
             <div className={`grid gap-4 ${showWealthPlanner && showPensionPlanner ? "xl:grid-cols-2" : ""}`}>
               {showPensionPlanner && (
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
@@ -1332,7 +1560,6 @@ Begin your response with Section 1.
                           <th className="border-b border-slate-200 pb-3 font-medium">Pension and reserves (computed)</th>
                           <th className="border-b border-slate-200 pb-3 text-right font-medium">Estimated returns</th>
                           <th className="border-b border-slate-200 pb-3 text-right font-medium">{guide.yearlyPensionSavingsLabel}</th>
-                          <th className="border-b border-slate-200 pb-3 text-right font-medium">Yearly spend after inflation</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1342,7 +1569,7 @@ Begin your response with Section 1.
                             <td className="py-3">
                               <div
                                 className="w-full rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-sm tabular-nums text-slate-500"
-                                title="Computed from last year's balance, estimated returns, and yearly pension and savings — not directly editable."
+                                title="Computed from last year's balance, estimated returns, yearly pension and savings, and (after retirement) spending — not directly editable."
                               >
                                 {projection.balance.toLocaleString("en-US")}
                               </div>
@@ -1365,7 +1592,6 @@ Begin your response with Section 1.
                                 <span className="block text-right tabular-nums text-slate-400">—</span>
                               )}
                             </td>
-                            <td className="py-3 text-right tabular-nums text-slate-600">{projection.spend ? projection.spend.toLocaleString("en-US") : "—"}</td>
                           </tr>
                         ))}
                       </tbody>
