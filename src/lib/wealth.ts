@@ -24,6 +24,11 @@ export const DEFAULT_SETTINGS = {
   illiquidYield: 4,
   inflationRate: 2,
   yearlyPensionSavings: 10000,
+  // The yearly savings above are paid out as the "Additional pension contribution"
+  // (a drawdown pension). Null = not set yet: from the year after retirement and
+  // running to age 85, so existing records keep sensible defaults.
+  additionalPensionFromAge: null as number | null,
+  additionalPensionYears: null as number | null,
   // Expected monthly spend / outgoings after retirement, in today's money. Null =
   // not set yet; the client then falls back to today's monthly outgoings (block K),
   // so existing records behave exactly as before.

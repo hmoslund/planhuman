@@ -17,6 +17,10 @@ export type PensionPayoutRow = {
   payoutStartAge?: number;
   payoutYears?: number | "lifelong";
   annualPayout?: number;
+  /** Block E row id — the stable key that ties a drawdown fund to its chart series. */
+  id?: string;
+  /** Block E name column — shown in the chart legend for that fund. */
+  identifier?: string;
 };
 
 /**
@@ -70,177 +74,38 @@ export function projectPensionBalanceToYear(input: {
 }
 
 /**
- * Fixed yearly payment that exhausts `balance` over `payoutYears` at `annualRatePct`:
- * payment = B·r / (1 − (1+r)^−n), and B/n when the rate is zero.
+ * A gross (before-tax) pension amount less the "Expected tax rate pension funds" from
+ * PF Planning focus — the single rule used by the funding table's after-tax total and
+ * by the retirement-income chart's after-tax columns, so the two can never disagree.
  */
-export function levelAnnuityPayment(
+export function afterTaxAmount(gross: number, pensionTaxRatePct: number): number {
+  const rate = Math.min(Math.max(pensionTaxRatePct, 0), 100) / 100;
+  return Math.round(gross * (1 - rate));
+}
+
+/**
+ * Level yearly payment that exhausts `balance` over `payoutYears` at `annualRatePct`,
+ * paid at the *start* of each year (annuity due):
+ *   V = C ÷ ([1 − (1+i)^−n] / i × (1+i)), and C/n when the rate is zero.
+ * Dividing by the present value of the annuity-due is what turns a start amount into
+ * the payment it can fund; multiplying by that factor would not be a payout at all.
+ */
+export function levelAnnuityDuePayment(
   balance: number,
   annualRatePct: number,
   payoutYears: number
 ): number {
   const n = Math.floor(payoutYears);
   if (!Number.isFinite(balance) || balance <= 0 || !Number.isFinite(n) || n <= 0) return 0;
-  const r = annualRatePct / 100;
-  if (r === 0) return balance / n;
-  return (balance * r) / (1 - Math.pow(1 + r, -n));
+  const i = annualRatePct / 100;
+  if (i === 0) return balance / n;
+  const presentValueFactor = ((1 - Math.pow(1 + i, -n)) / i) * (1 + i);
+  return balance / presentValueFactor;
 }
 
-/** A row only takes part in the income chart once both type and start age are set. */
+/** A pension only takes part once both its type and its payout start age are set. */
 export function isPensionPayoutConfigured(row: PensionPayoutRow): boolean {
   return Boolean(row.pensionType) && typeof row.payoutStartAge === "number" && row.payoutStartAge > 0;
-}
-
-export type RetirementIncomeInput = {
-  pensionRows: PensionPayoutRow[];
-  /** Total of block C (investments) as of today — the pot that funds unfunded years. */
-  investmentBalance: number;
-  /**
-   * Expected yearly spend in today's money — the PF Planning focus retirement-spend
-   * assumption (monthly × 12), falling back to block K monthly outgoings × 12 while
-   * the user hasn't set one. Drives the chart's spending line and its gap.
-   */
-  yearlyExpenses: number;
-  birthYear: number;
-  retirementAge: number;
-  /** "Today" — the year expense figures are expressed in. */
-  currentYear: number;
-  pensionYieldPct: number;
-  inflationRatePct: number;
-  pensionTaxRatePct: number;
-  /** true = apply the pension tax rate to annuity and drawdown income (default). */
-  afterTax: boolean;
-  yearlyPensionSavings: number;
-  pensionSavingsOverrides: Record<number, number>;
-};
-
-export type RetirementIncomeYear = {
-  year: number;
-  age: number;
-  /** Annuity payouts (after tax when afterTax). */
-  annuity: number;
-  /** Drawdown pensions converted to a level payment (after tax when afterTax). */
-  drawdown: number;
-  /** Invested savings drawn to cover this year's unfunded spending — never taxed; limited by what is left of the pot. */
-  investmentSpend: number;
-  /**
-   * Pension surplus arriving from earlier years — re-pushed forward when this year
-   * still runs a surplus, otherwise it is what finances this year before the pot.
-   */
-  carriedIn: number;
-  totalIncome: number;
-  /** Expected yearly spend (PF Planning focus), compounded with inflation until that year. */
-  spending: number;
-  /**
-   * pensions after tax + carriedIn + investmentSpend − spending.
-   * 0 = fully financed, positive = surplus pushed to later years,
-   * negative = the investment pot ran out before the spending was covered.
-   */
-  gap: number;
-};
-
-/**
- * Build one row per chart year: retirement year (birth year + retirement age)
- * through the year the user turns 85. Returns an empty array when the
- * retirement age is 85 or later.
- *
- * Funding after retirement — each year's spending is financed in this order:
- *   1. pensions after tax,
- *   2. any surplus pushed forward from earlier years,
- *   3. only the remainder out of the investments, never more than the pot has left.
- * A year whose pensions (plus carried-in surplus) already cover the spending draws
- * nothing from the investments; its whole leftover is pushed to the next year that
- * runs a deficit.
- */
-export function buildRetirementIncomeSeries(input: RetirementIncomeInput): RetirementIncomeYear[] {
-  const retirementYear = input.birthYear + input.retirementAge;
-  const startYear = retirementYear;
-  const endYear = input.birthYear + CHART_END_AGE;
-  if (endYear < startYear) return [];
-
-  const taxFactor = input.afterTax
-    ? 1 - Math.min(Math.max(input.pensionTaxRatePct, 0), 100) / 100
-    : 1;
-
-  // Precompute each configured row's fixed yearly income and active age window.
-  const streams = input.pensionRows
-    .filter(isPensionPayoutConfigured)
-    .map((row) => {
-      const startAge = row.payoutStartAge as number;
-      const endAge = payoutEndAge(startAge, row.payoutYears);
-      let yearly = 0;
-      if (row.pensionType === "annuity") {
-        yearly = Number(row.annualPayout) > 0 ? Number(row.annualPayout) : 0;
-      } else {
-        // Drawdown: compound the pot (yield + yearly savings until retirement) to
-        // the payout start age, then convert it to a level payment over the window.
-        const balanceAtStart = projectPensionBalanceToYear({
-          balance: Number(row.value) || 0,
-          targetYear: input.birthYear + startAge,
-          pensionYieldPct: input.pensionYieldPct,
-          retirementYear,
-          yearlyPensionSavings: input.yearlyPensionSavings,
-          pensionSavingsOverrides: input.pensionSavingsOverrides,
-        });
-        yearly = levelAnnuityPayment(balanceAtStart, input.pensionYieldPct, endAge - startAge);
-      }
-      return { kind: row.pensionType as "annuity" | "drawdown", startAge, endAge, yearly };
-    });
-
-  const rows: RetirementIncomeYear[] = [];
-  let investmentRemaining = Math.max(input.investmentBalance, 0);
-  // Pension surplus pushed forward from earlier years, spent down before the pot is.
-  let carriedForward = 0;
-
-  for (let year = startYear; year <= endYear; year++) {
-    const age = year - input.birthYear;
-
-    let annuityRaw = 0;
-    let drawdownRaw = 0;
-    for (const stream of streams) {
-      if (age < stream.startAge || age >= stream.endAge) continue;
-      if (stream.kind === "annuity") annuityRaw += stream.yearly;
-      else drawdownRaw += stream.yearly;
-    }
-    const annuity = Math.round(annuityRaw * taxFactor);
-    const drawdown = Math.round(drawdownRaw * taxFactor);
-
-    const spending = Math.round(
-      inflatedYearlySpend(input.yearlyExpenses, input.inflationRatePct, input.currentYear, year)
-    );
-
-    // Funding order: pensions after tax, then the surplus pushed forward from earlier
-    // years, then the investments — and only as much of the remainder as the pot still
-    // has left.
-    const carriedIn = carriedForward;
-    const pensionAfterTax = annuity + drawdown;
-    const net = pensionAfterTax + carriedIn - spending;
-    let spendFromInvestments = 0;
-    if (net >= 0) {
-      // Pensions (plus what earlier years pushed forward) already cover this year:
-      // no investment draw — the whole leftover is pushed to the next deficit year.
-      carriedForward = net;
-    } else {
-      carriedForward = 0;
-      spendFromInvestments = Math.round(Math.min(-net, investmentRemaining));
-      investmentRemaining = Math.max(investmentRemaining - spendFromInvestments, 0);
-    }
-
-    const totalIncome = annuity + drawdown + spendFromInvestments;
-
-    rows.push({
-      year,
-      age,
-      annuity,
-      drawdown,
-      investmentSpend: spendFromInvestments,
-      carriedIn,
-      totalIncome,
-      spending,
-      gap: net + spendFromInvestments,
-    });
-  }
-
-  return rows;
 }
 
 /**
@@ -253,3 +118,220 @@ function payoutEndAge(startAge: number, payoutYears: number | "lifelong" | undef
   }
   return CHART_END_AGE + 1;
 }
+
+/**
+ * Funding overview — one row per year from the retirement year to age 85, showing how
+ * the pensions and the investment funds pay the living expenses. This is the single
+ * source behind both the "Funding after retirement" table and the retirement-income
+ * chart.
+ *
+ *   • Start amount — each block E balance is projected to its payout year:
+ *     FV = PV × (1 + yield)^years, yield = "Average yield % pension funds".
+ *   • Drawdown payout — that start amount becomes the level payout of the annuity-due
+ *     payment formula, over that pension's own payout years, at the same yield.
+ *   • Annuity payout — the entered yearly payment, increased with "Expected % inflation
+ *     rate" from today to the year it is paid.
+ *   • Additional pension contribution — the Retirement table's yearly savings,
+ *     compounded to its payout start year, paid out as one more drawdown pension.
+ *   • Spending — today's expected monthly spend × 12, moved to the retirement year with
+ *     inflation and then compounded year over year.
+ *   • Tax — each year's pension total (before tax) is reduced once by "Expected tax rate
+ *     pension funds"; that after-tax total is what the year is funded with.
+ *   • Investments — today's block C total grows with "Average yield % less liquid assets"
+ *     each year; whenever (pensions after tax − yearly spend) is negative, exactly that
+ *     amount is drawn from it — never more than it holds.
+ */
+export function buildRetirementFundingOverview(input: FundingOverviewInput): FundingOverviewResult {
+  const retirementYear = input.birthYear + input.retirementAge;
+  const startYear = retirementYear;
+  const endYear = input.birthYear + CHART_END_AGE;
+  const untouchedPot = Math.max(input.investmentBalance, 0);
+  if (endYear < startYear) return { funds: [], rows: [], unspentInvestmentFunds: untouchedPot };
+
+  // "Expected tax rate pension funds" from PF Planning focus, taken off the pension
+  // total — funding always works on what the pensions are actually worth after tax.
+  const taxRate = Math.min(Math.max(input.pensionTaxRatePct, 0), 100) / 100;
+  const pensionRate = input.pensionYieldPct / 100;
+  const investmentRate = input.investmentYieldPct / 100;
+  const inflationRate = input.inflationRatePct / 100;
+
+  type PensionFund = FundingOverviewFund & {
+    /** Inclusive start age; the fund pays for ages startAge … endAge − 1. */
+    startAge: number;
+    endAge: number;
+    /** Payout before the per-year inflation/tax adjustments below. */
+    yearly: number;
+    /** true = grow `yearly` with inflation from currentYear (annuity contracts). */
+    inflate: boolean;
+  };
+
+  const pensionFunds: PensionFund[] = [];
+
+  input.pensionRows.filter(isPensionPayoutConfigured).forEach((row, index) => {
+    const startAge = row.payoutStartAge as number;
+    const endAge = payoutEndAge(startAge, row.payoutYears);
+    const key = row.id ?? `row-${index}`;
+    const name =
+      (row.identifier ?? "").trim() || (row.pensionType === "annuity" ? "Annuity pension" : "Drawdown pension");
+
+    if (row.pensionType === "annuity") {
+      pensionFunds.push({
+        key,
+        name,
+        startAge,
+        endAge,
+        yearly: Number(row.annualPayout) > 0 ? Number(row.annualPayout) : 0,
+        inflate: true,
+      });
+      return;
+    }
+
+    // Start amount: today's balance projected to the payout year — FV = PV (1 + yield)^years.
+    const years = input.birthYear + startAge - input.currentYear;
+    const startAmount = (Number(row.value) || 0) * Math.pow(1 + pensionRate, years);
+    pensionFunds.push({
+      key,
+      name,
+      startAge,
+      endAge,
+      yearly: levelAnnuityDuePayment(startAmount, input.pensionYieldPct, endAge - startAge),
+      inflate: false,
+    });
+  });
+
+  // Additional pension contribution: the Retirement table's yearly savings compounded to
+  // the payout start year, then paid out as one more drawdown pension.
+  const additionalStartAge = input.additionalPension.payoutStartAge;
+  const additionalPayoutYears = Math.max(Math.floor(input.additionalPension.payoutYears), 0);
+  if (Number.isFinite(additionalStartAge) && additionalStartAge > 0 && additionalPayoutYears > 0) {
+    const startAmount = projectPensionBalanceToYear({
+      balance: 0,
+      targetYear: input.birthYear + additionalStartAge,
+      pensionYieldPct: input.pensionYieldPct,
+      retirementYear,
+      yearlyPensionSavings: input.additionalPension.yearlySavings,
+      pensionSavingsOverrides: input.additionalPension.savingsOverrides,
+    });
+    pensionFunds.push({
+      key: "additional-pension",
+      name: "Additional pension contribution",
+      startAge: additionalStartAge,
+      endAge: additionalStartAge + additionalPayoutYears,
+      yearly: levelAnnuityDuePayment(startAmount, input.pensionYieldPct, additionalPayoutYears),
+      inflate: false,
+    });
+  }
+
+  const rows: FundingOverviewYear[] = [];
+  let investmentFunds = untouchedPot;
+
+  for (let year = startYear; year <= endYear; year++) {
+    const age = year - input.birthYear;
+
+    // Each fund pays its gross (before-tax) amount; the tax is taken once, on the
+    // total, so "pension total after tax" is exactly the total less the PF tax rate.
+    const payouts = pensionFunds
+      .filter((fund) => age >= fund.startAge && age < fund.endAge)
+      .map((fund) => {
+        const payment = fund.inflate
+          ? fund.yearly * Math.pow(1 + inflationRate, year - input.currentYear)
+          : fund.yearly;
+        return { key: fund.key, name: fund.name, amount: Math.round(payment) };
+      });
+    const pensionsTotal = payouts.reduce((sum, payout) => sum + payout.amount, 0);
+    const pensionTotalAfterTax = Math.round(pensionsTotal * (1 - taxRate));
+    const spending = Math.round(
+      inflatedYearlySpend(input.yearlyExpenses, input.inflationRatePct, input.currentYear, year)
+    );
+
+    // Funding rule: as soon as (pensions after tax − yearly spend) is negative, the
+    // missing amount is drawn from the investment funds — never more than they hold.
+    // They grow with the planning-block yield first; an untouched surplus simply stays
+    // invested and keeps growing.
+    investmentFunds = investmentFunds * (1 + investmentRate);
+    const needed = Math.max(spending - pensionTotalAfterTax, 0);
+    const fromInvestments = Math.round(Math.min(needed, investmentFunds));
+    investmentFunds = Math.max(investmentFunds - fromInvestments, 0);
+
+    rows.push({
+      year,
+      age,
+      payouts,
+      pensionsTotal,
+      pensionTotalAfterTax,
+      spending,
+      fromInvestments,
+      unfunded: Math.max(spending - pensionTotalAfterTax - fromInvestments, 0),
+      investmentFundsLeft: Math.round(investmentFunds),
+    });
+  }
+
+  return {
+    funds: pensionFunds.map(({ key, name }) => ({ key, name })),
+    rows,
+    unspentInvestmentFunds: Math.round(investmentFunds),
+  };
+}
+
+/** One column of the funding table: a pension, or the additional contribution. */
+export type FundingOverviewFund = { key: string; name: string };
+
+/** The extra drawdown pension built from the Retirement table's savings column. */
+export type AdditionalPensionInput = {
+  /** Flat "Yearly pension savings to retirement" from PF Planning focus. */
+  yearlySavings: number;
+  /** Per-year overrides edited directly in the Retirement table. */
+  savingsOverrides: Record<number, number>;
+  /** Payout start age — PF Planning focus "from age" (default: the year after retirement). */
+  payoutStartAge: number;
+  /** Number of payouts — PF Planning focus "years" (default: run until age 85). */
+  payoutYears: number;
+};
+
+export type FundingOverviewInput = {
+  pensionRows: PensionPayoutRow[];
+  /** Today's total of block C — grows with `investmentYieldPct` and funds any gap. */
+  investmentBalance: number;
+  /** "Average yield % less liquid assets" from PF Planning focus. */
+  investmentYieldPct: number;
+  /** Expected monthly spend after retirement × 12, in today's money. */
+  yearlyExpenses: number;
+  birthYear: number;
+  retirementAge: number;
+  /** "Today" — the year today's amounts are expressed in. */
+  currentYear: number;
+  /** "Average yield % pension funds" from PF Planning focus. */
+  pensionYieldPct: number;
+  inflationRatePct: number;
+  /** "Expected tax rate pension funds" from PF Planning focus. */
+  pensionTaxRatePct: number;
+  additionalPension: AdditionalPensionInput;
+};
+
+export type FundingOverviewYear = {
+  year: number;
+  age: number;
+  /** Per fund, before tax; a fund outside its payout window is omitted. */
+  payouts: Array<{ key: string; name: string; amount: number }>;
+  /** Sum of `payouts`, before tax. */
+  pensionsTotal: number;
+  /** `pensionsTotal` less the "Expected tax rate pension funds" from PF Planning focus. */
+  pensionTotalAfterTax: number;
+  /** Inflation-adjusted spending for this year. */
+  spending: number;
+  /** Drawn from the investment funds: the negative part of (after tax − spending). */
+  fromInvestments: number;
+  /** What neither the pensions nor the investment funds could cover. */
+  unfunded: number;
+  /** Investment funds left after this year's draw. */
+  investmentFundsLeft: number;
+};
+
+export type FundingOverviewResult = {
+  /** One table column per pension (block E order), then the additional contribution. */
+  funds: FundingOverviewFund[];
+  rows: FundingOverviewYear[];
+  /** Investment funds left after the last charted year (age 85). */
+  unspentInvestmentFunds: number;
+};
+

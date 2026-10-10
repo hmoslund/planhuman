@@ -8,7 +8,14 @@ import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import { curveMonotoneX } from "d3-shape";
 import { calculateWealth, getCountryInfo, normalizeCurrency, COUNTRY_CODES, CURRENCIES, toCurrency } from "@/lib/wealth";
 import { blockTranslations, guideCopy, type BlockCopy, type CountryCode } from "@/lib/block-copy";
-import { buildRetirementIncomeSeries, inflatedYearlySpend, isPensionPayoutConfigured } from "@/lib/retirement";
+import {
+  afterTaxAmount,
+  buildRetirementFundingOverview,
+  inflatedYearlySpend,
+  isPensionPayoutConfigured,
+  CHART_END_AGE,
+  type FundingOverviewYear,
+} from "@/lib/retirement";
 import { isPremiumUser } from "@/lib/premium";
 
 type Row = { 
@@ -81,6 +88,11 @@ const LANGUAGE_LABELS: Array<[CountryCode, string]> = [
   ["NO", "Norsk"],
   ["FI", "Suomi"],
 ];
+
+// One colour per pension fund in the retirement-income chart — kept clear of the
+// investment amber (0xf59e0b) and the spending-line red (0xef4444). Wraps for users
+// with more funds than colours.
+const FUND_COLORS = [0x2563eb, 0x7c3aed, 0x0891b2, 0xdb2777, 0x65a30d, 0x0d9488, 0x64748b, 0xc026d3];
 
 function getBlockCopy(key: string, language: CountryCode) {
   const fallback = blockMeta.find((meta) => meta.key === key) ?? blockMeta[0];
@@ -158,6 +170,11 @@ export function DashboardClient() {
   // Expected monthly spend / outgoings after retirement, in today's money — null
   // until the user sets it, then it falls back to today's monthly outgoings (block K).
   const [retirementMonthlySpend, setRetirementMonthlySpend] = useState<number | null>(null);
+  // Payout window of the "Additional pension contribution" built from the Retirement
+  // table's yearly savings — null until set, then the defaults derived from the
+  // retirement age apply (the year after retirement, paying until age 85).
+  const [additionalPensionFromAge, setAdditionalPensionFromAge] = useState<number | null>(null);
+  const [additionalPensionYears, setAdditionalPensionYears] = useState<number | null>(null);
   // View-only toggle for the retirement-income chart; not part of the saved record.
   const [taxMode, setTaxMode] = useState<"before" | "after">("after");
   const [showGuide, setShowGuide] = useState(false);
@@ -195,6 +212,8 @@ export function DashboardClient() {
       if (typeof s.yearlyPensionSavings === "number") setYearlyPensionSavings(s.yearlyPensionSavings);
       if (typeof s.pensionTaxRate === "number") setPensionTaxRate(s.pensionTaxRate);
       setRetirementMonthlySpend(typeof s.retirementMonthlySpend === "number" ? s.retirementMonthlySpend : null);
+      setAdditionalPensionFromAge(typeof s.additionalPensionFromAge === "number" ? s.additionalPensionFromAge : null);
+      setAdditionalPensionYears(typeof s.additionalPensionYears === "number" ? s.additionalPensionYears : null);
       if (typeof s.smoothingHorizontal === "number") setSmoothingHorizontal(s.smoothingHorizontal);
       if (typeof s.smoothingVertical === "number") setSmoothingVertical(s.smoothingVertical);
       if (typeof s.strokeWidth === "number") setStrokeWidth(s.strokeWidth);
@@ -240,6 +259,8 @@ export function DashboardClient() {
         yearlyPensionSavings,
         pensionTaxRate,
         retirementMonthlySpend,
+        additionalPensionFromAge,
+        additionalPensionYears,
         showWealthPlanner,
         showPensionPlanner,
         pensionSavingsOverrides,
@@ -256,6 +277,8 @@ export function DashboardClient() {
       yearlyPensionSavings,
       pensionTaxRate,
       retirementMonthlySpend,
+      additionalPensionFromAge,
+      additionalPensionYears,
       showWealthPlanner,
       showPensionPlanner,
       pensionSavingsOverrides,
@@ -479,15 +502,21 @@ export function DashboardClient() {
     return projections;
   }, [retirementYear, cValue, illiquidYield, summary.cashflow, cashflowOverrides]);
 
-  // Retirement income vs. spending — all math is pure and lives in lib/retirement.ts:
-  // the spending line comes from the PF Planning focus retirement-spend assumption
-  // (block K outgoings until the user sets one), and every year is financed by
-  // pensions first, carried-forward surplus second, investments only for the rest.
-  const retirementIncome = useMemo(
+  // Payout window of the Additional pension contribution — the defaults follow the
+  // retirement age until the user pins them in PF Planning focus.
+  const additionalPensionStartAge = additionalPensionFromAge ?? retirementAge + 1;
+  const additionalPensionPayoutYears =
+    additionalPensionYears ?? Math.max(CHART_END_AGE - additionalPensionStartAge + 1, 0);
+
+  // Funding overview table: how the pensions (block E + the Retirement table's yearly
+  // savings) and the investment funds pay the yearly spending, from retirement to 85.
+  // All maths lives in lib/retirement.ts — the chart is rebuilt on top of it later.
+  const fundingOverview = useMemo(
     () =>
-      buildRetirementIncomeSeries({
+      buildRetirementFundingOverview({
         pensionRows: blocks.E ?? [],
         investmentBalance: cValue,
+        investmentYieldPct: illiquidYield,
         yearlyExpenses: retirementYearlySpend,
         birthYear,
         retirementAge,
@@ -495,13 +524,17 @@ export function DashboardClient() {
         pensionYieldPct: pensionYield,
         inflationRatePct: inflationRate,
         pensionTaxRatePct: pensionTaxRate,
-        afterTax: taxMode === "after",
-        yearlyPensionSavings,
-        pensionSavingsOverrides,
+        additionalPension: {
+          yearlySavings: yearlyPensionSavings,
+          savingsOverrides: pensionSavingsOverrides,
+          payoutStartAge: additionalPensionStartAge,
+          payoutYears: additionalPensionPayoutYears,
+        },
       }),
     [
       blocks.E,
       cValue,
+      illiquidYield,
       retirementYearlySpend,
       birthYear,
       retirementAge,
@@ -509,40 +542,15 @@ export function DashboardClient() {
       pensionYield,
       inflationRate,
       pensionTaxRate,
-      taxMode,
       yearlyPensionSavings,
       pensionSavingsOverrides,
+      additionalPensionStartAge,
+      additionalPensionPayoutYears,
     ]
   );
 
-  // Chart rows: raw numbers per series plus a ready-made tooltip for each year.
-  const retirementIncomeData = useMemo(
-    () =>
-      retirementIncome.map((row) => ({
-        year: String(row.year),
-        annuity: row.annuity,
-        drawdown: row.drawdown,
-        investmentSpend: row.investmentSpend,
-        spending: row.spending,
-        tooltip: [
-          `${row.year} (age ${row.age})`,
-          `Annuity pensions: ${row.annuity.toLocaleString("en-US")}`,
-          `Drawdown pensions: ${row.drawdown.toLocaleString("en-US")}`,
-          `Spend from investments: ${row.investmentSpend.toLocaleString("en-US")}`,
-          `Total income: ${row.totalIncome.toLocaleString("en-US")}`,
-          ...(row.carriedIn > 0
-            ? [`Earlier surplus carried in: ${row.carriedIn.toLocaleString("en-US")}`]
-            : []),
-          `Spending: ${row.spending.toLocaleString("en-US")}`,
-          row.gap > 0
-            ? `Surplus: ${row.gap.toLocaleString("en-US")} (pushed to later years)`
-            : row.gap === 0
-              ? "Fully funded"
-              : `Shortfall: ${Math.abs(row.gap).toLocaleString("en-US")} (investments exhausted)`,
-        ].join("\n"),
-      })),
-    [retirementIncome]
-  );
+  // First year neither the pensions nor the investment funds cover the spending.
+  const firstUnfundedYear = fundingOverview.rows.find((row) => row.unfunded > 0);
 
   // Empty state: no pension row has both a type and a payout start age yet.
   const pensionIncomeConfigured = (blocks.E ?? []).some(isPensionPayoutConfigured);
@@ -630,12 +638,22 @@ useEffect(() => {
     };
   }, [retirementProjections, assetProjections, smoothingHorizontal, smoothingVertical, strokeWidth]);
 
-  // Retirement income vs. spending — three stacked income bars plus a spending line,
-  // same amCharts setup (theme, scrollbar, cursor, rotated category labels) as the
-  // charts above.
+  // Retirement income vs. spending — built from the funding overview, so this chart and
+  // the "Funding after retirement" table can never disagree: one stacked segment per
+  // pension fund (before/after tax per the toggle), the investment draw, and the yearly
+  // spending line. Same amCharts setup as above; deliberately no hover tooltips — the
+  // legend and the cursor carry the interaction instead.
   useEffect(() => {
     const container = incomeChartRef.current;
     if (!container) return;
+
+    const rows = fundingOverview.rows;
+    const afterTax = taxMode === "after";
+    // A fund's after-tax segment follows the same rule as the table's after-tax total.
+    const fundAmount = (row: FundingOverviewYear, fundKey: string) => {
+      const gross = row.payouts.find((entry) => entry.key === fundKey)?.amount ?? 0;
+      return afterTax ? afterTaxAmount(gross, pensionTaxRate) : gross;
+    };
 
     const root = am5.Root.new(container);
     root.setThemes([am5themes_Animated.new(root)]);
@@ -660,20 +678,23 @@ useEffect(() => {
       })
     );
     xAxis.get("renderer").labels.template.setAll({ rotation: -30, centerY: am5.p50, centerX: am5.p0, paddingTop: 10 });
-    xAxis.data.setAll(retirementIncomeData);
+    xAxis.data.setAll(rows.map((row) => ({ year: String(row.year) })));
 
     const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, { renderer: am5xy.AxisRendererY.new(root, {}) }));
 
-    const pushIncomeSeries = (name: string, field: "annuity" | "drawdown" | "investmentSpend", color: number) => {
+    // Every series carries the same { year, value } shape, so the funds can be pushed
+    // in a loop like any other stacked segment.
+    const valueData = (values: number[]) => values.map((value, index) => ({ year: String(rows[index].year), value }));
+
+    const pushStackedSeries = (name: string, data: Array<{ year: string; value: number }>, color: number) => {
       const series = chart.series.push(
         am5xy.ColumnSeries.new(root, {
           name,
           xAxis,
           yAxis,
           stacked: true,
-          valueYField: field,
+          valueYField: "value",
           categoryXField: "year",
-          tooltip: am5.Tooltip.new(root, { labelText: "{tooltip}" }),
         })
       );
       series.columns.template.setAll({
@@ -682,27 +703,35 @@ useEffect(() => {
         strokeWidth: 1,
         fillOpacity: 0.9,
       });
-      series.data.setAll(retirementIncomeData);
+      series.data.setAll(data);
       return series;
     };
 
-    pushIncomeSeries("Annuity pensions", "annuity", 0x2563eb);
-    pushIncomeSeries("Drawdown pensions", "drawdown", 0x7c3aed);
-    pushIncomeSeries("Spend from investments", "investmentSpend", 0xf59e0b);
+    // One stacked segment per pension fund (block E order, then the Additional pension
+    // contribution) in its own colour, so every fund inside a year's column is visible.
+    fundingOverview.funds.forEach((fund, index) => {
+      pushStackedSeries(
+        fund.name,
+        valueData(rows.map((row) => fundAmount(row, fund.key))),
+        FUND_COLORS[index % FUND_COLORS.length]
+      );
+    });
+
+    // What the investment funds had to add that year — always the real, after-tax draw.
+    pushStackedSeries("From investments", valueData(rows.map((row) => row.fromInvestments)), 0xf59e0b);
 
     const spendingSeries = chart.series.push(
       am5xy.LineSeries.new(root, {
         name: "Yearly spending",
         xAxis,
         yAxis,
-        valueYField: "spending",
+        valueYField: "value",
         categoryXField: "year",
-        tooltip: am5.Tooltip.new(root, { labelText: "{tooltip}" }),
       })
     );
     spendingSeries.strokes.template.setAll({ stroke: am5.color(0xef4444), strokeWidth: 3, lineCap: "round" });
     spendingSeries.set("curveFactory", curveMonotoneX);
-    spendingSeries.data.setAll(retirementIncomeData);
+    spendingSeries.data.setAll(valueData(rows.map((row) => row.spending)));
 
     // Pushed after chartContainer so the default vertical layout puts it at the bottom.
     const legend = chart.children.push(am5.Legend.new(root, { centerX: am5.p50, x: am5.p50 }));
@@ -714,7 +743,7 @@ useEffect(() => {
 
     chart.appear(1000, 100);
     return () => root.dispose();
-  }, [retirementIncomeData]);
+  }, [fundingOverview, taxMode, pensionTaxRate]);
 
   const addRow = (blockKey: string) => {
     setBlocks((current) => {
@@ -772,6 +801,8 @@ useEffect(() => {
           yearlyPensionSavings,
           pensionTaxRate,
           retirementMonthlySpend,
+          additionalPensionFromAge,
+          additionalPensionYears,
           smoothingHorizontal,
           smoothingVertical,
           strokeWidth,
@@ -1498,6 +1529,30 @@ Begin your response with Section 1.
                     Drives the Yearly spending line in the retirement income graph. Defaults to your current monthly outgoings until you set it.
                   </span>
                 </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Yearly pension savings to retirement - from age</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="number"
+                    value={additionalPensionStartAge}
+                    onChange={(event) => setAdditionalPensionFromAge(Number(event.target.value || 0))}
+                  />
+                  <span className="mt-2 block text-xs leading-5 text-slate-500">
+                    Your yearly savings are paid out as the Additional pension contribution from this age. Defaults to the year after retirement.
+                  </span>
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">Yearly pension savings to retirement - years</span>
+                  <input
+                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="number"
+                    value={additionalPensionPayoutYears}
+                    onChange={(event) => setAdditionalPensionYears(Number(event.target.value || 0))}
+                  />
+                  <span className="mt-2 block text-xs leading-5 text-slate-500">
+                    How many yearly payouts the Additional pension contribution makes. Defaults to paying until age 85.
+                  </span>
+                </label>
               </div>
             </div>
 
@@ -1508,10 +1563,11 @@ Begin your response with Section 1.
                     <p className="text-sm font-medium text-slate-500">Retirement income</p>
                     <h2 className="text-lg font-semibold text-slate-900">Retirement income vs. spending</h2>
                     <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-                      Funding after retirement: every year is paid by your pensions after tax first, then by surplus pushed forward from earlier years, and only the remainder from your investments.
+                      Funding after retirement: each year is paid by your pensions — and, whenever the pensions after tax do not cover your yearly
+                      spending, the missing amount is drawn from your investment funds.
                     </p>
                   </div>
-                  {pensionIncomeConfigured && retirementIncome.length > 0 && (
+                  {pensionIncomeConfigured && fundingOverview.rows.length > 0 && (
                     <div className="flex items-center gap-2">
                       <button
                         className={`rounded-full px-4 py-2 text-sm font-medium ${taxMode === "before" ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
@@ -1532,12 +1588,23 @@ Begin your response with Section 1.
                   <p className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                     Fill in pension start age and payout years for your pensions in block E to see retirement income here.
                   </p>
-                ) : retirementIncome.length === 0 ? (
+                ) : fundingOverview.rows.length === 0 ? (
                   <p className="mt-4 rounded-2xl border border-slate-100 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
                     Retirement starts at age 85 or later, so there are no years to chart. Lower the retirement age in PF Planning focus.
                   </p>
                 ) : (
-                  <div ref={incomeChartRef} className="mt-5 h-[380px]" />
+                  <>
+                    <div ref={incomeChartRef} className="mt-5 h-[380px]" />
+                    {fundingOverview.unspentInvestmentFunds > 0 && (
+                      <p className="mt-4 text-sm text-slate-600">
+                        Unspent investment funds:{" "}
+                        <span className="font-medium tabular-nums text-slate-900">
+                          {fundingOverview.unspentInvestmentFunds.toLocaleString("en-US")}
+                        </span>{" "}
+                        left from age 86.
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -1654,6 +1721,87 @@ Begin your response with Section 1.
                 </div>
               )}
             </div>
+
+            {showPensionPlanner && fundingOverview.rows.length > 0 && (
+              <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex flex-wrap items-baseline justify-between gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-slate-500">Funding after retirement</p>
+                    <h2 className="text-lg font-semibold text-slate-900">Pensions and investments per year</h2>
+                    <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                      Every year from your retirement year to age {CHART_END_AGE}: the payout of each pension, the Additional pension contribution built
+                      from your yearly savings, your inflation-adjusted spend — and what the investment funds must cover when your pensions after tax
+                      are not enough.
+                    </p>
+                  </div>
+                  <div className="text-sm text-slate-500">Tax rate on pension funds: {pensionTaxRate}%</div>
+                </div>
+
+                <div className="mt-5 overflow-x-auto">
+                  <table className="min-w-full text-left text-sm text-slate-700">
+                    <thead>
+                      <tr>
+                        <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
+                        <th className="border-b border-slate-200 pb-3 font-medium">Age</th>
+                        {fundingOverview.funds.map((fund) => (
+                          <th key={fund.key} className="border-b border-slate-200 pb-3 text-right font-medium">
+                            {fund.name}
+                          </th>
+                        ))}
+                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Pension total</th>
+                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Pension total after tax</th>
+                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Yearly spend</th>
+                        <th className="border-b border-slate-200 pb-3 text-right font-medium">From investments</th>
+                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Not covered</th>
+                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Investment funds left</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fundingOverview.rows.map((row) => (
+                        <tr key={row.year} className="border-b border-slate-200 last:border-none">
+                          <td className="py-3 pr-4 font-medium text-slate-900">{row.year}</td>
+                          <td className="py-3 pr-4 text-slate-500">{row.age}</td>
+                          {fundingOverview.funds.map((fund) => {
+                            const payout = row.payouts.find((entry) => entry.key === fund.key);
+                            return (
+                              <td key={fund.key} className="py-3 text-right tabular-nums text-slate-900">
+                                {payout ? payout.amount.toLocaleString("en-US") : "—"}
+                              </td>
+                            );
+                          })}
+                          <td className="py-3 text-right tabular-nums text-slate-700">{row.pensionsTotal.toLocaleString("en-US")}</td>
+                          <td className="py-3 text-right font-medium tabular-nums text-slate-900">
+                            {row.pensionTotalAfterTax.toLocaleString("en-US")}
+                          </td>
+                          <td className="py-3 text-right tabular-nums text-slate-700">{row.spending.toLocaleString("en-US")}</td>
+                          <td className={`py-3 text-right tabular-nums ${row.fromInvestments > 0 ? "text-amber-700" : "text-slate-400"}`}>
+                            {row.fromInvestments > 0 ? row.fromInvestments.toLocaleString("en-US") : "—"}
+                          </td>
+                          <td className={`py-3 text-right tabular-nums ${row.unfunded > 0 ? "font-medium text-rose-700" : "text-slate-400"}`}>
+                            {row.unfunded > 0 ? row.unfunded.toLocaleString("en-US") : "—"}
+                          </td>
+                          <td className="py-3 text-right tabular-nums text-slate-600">{row.investmentFundsLeft.toLocaleString("en-US")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {firstUnfundedYear && (
+                  <p className="mt-4 text-sm leading-6 text-rose-700">
+                    The investment funds run out in {firstUnfundedYear.year} (age {firstUnfundedYear.age}) — from then on part of the yearly spend is
+                    shown as not covered.
+                  </p>
+                )}
+                {fundingOverview.unspentInvestmentFunds > 0 && (
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Unspent investment funds:{" "}
+                    <span className="font-medium tabular-nums text-slate-900">{fundingOverview.unspentInvestmentFunds.toLocaleString("en-US")}</span>{" "}
+                    left from age 86.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </section>
       </div>
