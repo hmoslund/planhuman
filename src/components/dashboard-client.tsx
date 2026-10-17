@@ -133,6 +133,12 @@ function sanitizeNumericPercent(value: string) {
   return value.replace(/[^0-9]/g, "").slice(0, 2);
 }
 
+// FR table display only — money figures are shown in thousands, rounded to the
+// nearest 1,000 (68,465 → 68; 3,306,200 → 3,306). The underlying maths is unchanged.
+function formatThousands(value: number) {
+  return Math.round(value / 1000).toLocaleString("en-US");
+}
+
 function createEmptyBlocks() {
   return {
     A: [],
@@ -1812,7 +1818,7 @@ Begin your response with Section 1.
                       {sec("FR").description.replace("{age}", String(CHART_END_AGE))}
                     </p>
                   </div>
-                  <div className="text-sm text-slate-500">Tax rate on pension funds: {pensionTaxRate}%</div>
+                  <div className="text-sm text-slate-500">Figures in thousands · Tax rate on pension funds: {pensionTaxRate}%</div>
                 </div>
 
                 <div className="mt-5 overflow-x-auto">
@@ -1843,22 +1849,22 @@ Begin your response with Section 1.
                             const payout = row.payouts.find((entry) => entry.key === fund.key);
                             return (
                               <td key={fund.key} className="py-3 text-right tabular-nums text-slate-900">
-                                {payout ? payout.amount.toLocaleString("en-US") : "—"}
+                                {payout ? formatThousands(payout.amount) : "—"}
                               </td>
                             );
                           })}
-                          <td className="py-3 text-right tabular-nums text-slate-700">{row.pensionsTotal.toLocaleString("en-US")}</td>
+                          <td className="py-3 text-right tabular-nums text-slate-700">{formatThousands(row.pensionsTotal)}</td>
                           <td className="py-3 text-right font-medium tabular-nums text-slate-900">
-                            {row.pensionTotalAfterTax.toLocaleString("en-US")}
+                            {formatThousands(row.pensionTotalAfterTax)}
                           </td>
-                          <td className="py-3 text-right tabular-nums text-slate-700">{row.spending.toLocaleString("en-US")}</td>
+                          <td className="py-3 text-right tabular-nums text-slate-700">{formatThousands(row.spending)}</td>
                           <td className={`py-3 text-right tabular-nums ${row.fromInvestments > 0 ? "text-amber-700" : "text-slate-400"}`}>
-                            {row.fromInvestments > 0 ? row.fromInvestments.toLocaleString("en-US") : "—"}
+                            {row.fromInvestments > 0 ? formatThousands(row.fromInvestments) : "—"}
                           </td>
                           <td className={`py-3 text-right tabular-nums ${row.unfunded > 0 ? "font-medium text-rose-700" : "text-slate-400"}`}>
-                            {row.unfunded > 0 ? row.unfunded.toLocaleString("en-US") : "—"}
+                            {row.unfunded > 0 ? formatThousands(row.unfunded) : "—"}
                           </td>
-                          <td className="py-3 text-right tabular-nums text-slate-600">{row.investmentFundsLeft.toLocaleString("en-US")}</td>
+                          <td className="py-3 text-right tabular-nums text-slate-600">{formatThousands(row.investmentFundsLeft)}</td>
                         </tr>
                       ))}
                     </tbody>
