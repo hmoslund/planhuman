@@ -278,13 +278,13 @@ export type FundingOverviewFund = { key: string; name: string };
 
 /** The extra drawdown pension built from the Retirement table's savings column. */
 export type AdditionalPensionInput = {
-  /** Flat "Yearly pension savings to retirement" from PF Planning focus. */
+  /** Flat yearly savings figure from PUR ("Additional pension contribution"). */
   yearlySavings: number;
   /** Per-year overrides edited directly in the Retirement table. */
   savingsOverrides: Record<number, number>;
-  /** Payout start age — PF Planning focus "from age" (default: the year after retirement). */
+  /** Payout start age — PUR "at what age will you start payout" (default: the year after retirement). */
   payoutStartAge: number;
-  /** Number of payouts — PF Planning focus "years" (default: run until age 85). */
+  /** Number of payouts — PUR "how many years will they be paid out over" (default: 10 years). */
   payoutYears: number;
 };
 

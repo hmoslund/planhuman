@@ -188,6 +188,7 @@ export function DashboardClient() {
   const retirementChartRef = useRef<HTMLDivElement | null>(null);
   const assetChartRef = useRef<HTMLDivElement | null>(null);
   const incomeChartRef = useRef<HTMLDivElement | null>(null);
+  const incomeLegendRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -502,11 +503,10 @@ export function DashboardClient() {
     return projections;
   }, [retirementYear, cValue, illiquidYield, summary.cashflow, cashflowOverrides]);
 
-  // Payout window of the Additional pension contribution — the defaults follow the
-  // retirement age until the user pins them in PF Planning focus.
+  // Payout window of the Additional pension contribution — defaults are the year
+  // after retirement and a 10-year payout, until the user pins them in PUR.
   const additionalPensionStartAge = additionalPensionFromAge ?? retirementAge + 1;
-  const additionalPensionPayoutYears =
-    additionalPensionYears ?? Math.max(CHART_END_AGE - additionalPensionStartAge + 1, 0);
+  const additionalPensionPayoutYears = additionalPensionYears ?? 10;
 
   // Funding overview table: how the pensions (block E + the Retirement table's yearly
   // savings) and the investment funds pay the yearly spending, from retirement to 85.
@@ -551,6 +551,16 @@ export function DashboardClient() {
 
   // First year neither the pensions nor the investment funds cover the spending.
   const firstUnfundedYear = fundingOverview.rows.find((row) => row.unfunded > 0);
+
+  // Net present day value of the unspent investment funds — the age-85 surplus
+  // discounted back to today's money with the expected inflation rate.
+  const unspentInvestmentFundsNpv =
+    fundingOverview.unspentInvestmentFunds > 0
+      ? Math.round(
+          fundingOverview.unspentInvestmentFunds /
+            Math.pow(1 + inflationRate / 100, Math.max(birthYear + CHART_END_AGE - currentYear, 0))
+        )
+      : 0;
 
   // Empty state: no pension row has both a type and a payout start age yet.
   const pensionIncomeConfigured = (blocks.E ?? []).some(isPensionPayoutConfigured);
@@ -733,9 +743,31 @@ useEffect(() => {
     spendingSeries.set("curveFactory", curveMonotoneX);
     spendingSeries.data.setAll(valueData(rows.map((row) => row.spending)));
 
-    // Pushed after chartContainer so the default vertical layout puts it at the bottom.
-    const legend = chart.children.push(am5.Legend.new(root, { centerX: am5.p50, x: am5.p50 }));
-    legend.data.setAll(chart.series.values);
+    // The legend is rendered as HTML below the chart (not inside the chart container),
+    // so on small screens it never overlaps the graph.
+    if (incomeLegendRef.current) {
+      const legendEl = incomeLegendRef.current;
+      legendEl.replaceChildren();
+      const legendItems: Array<{ label: string; color: string }> = [
+        ...fundingOverview.funds.map((fund, index) => ({
+          label: fund.name,
+          color: `#${FUND_COLORS[index % FUND_COLORS.length].toString(16).padStart(6, "0")}`,
+        })),
+        { label: "From investments", color: "#f59e0b" },
+        { label: "Yearly spending", color: "#ef4444" },
+      ];
+      for (const item of legendItems) {
+        const wrap = document.createElement("span");
+        wrap.className = "inline-flex items-center gap-1.5 text-xs text-slate-600";
+        const dot = document.createElement("span");
+        dot.className = "inline-block h-2.5 w-2.5 shrink-0 rounded-full";
+        dot.style.backgroundColor = item.color;
+        const label = document.createElement("span");
+        label.textContent = item.label;
+        wrap.append(dot, label);
+        legendEl.append(wrap);
+      }
+    }
 
     const cursor = chart.set("cursor", am5xy.XYCursor.new(root, { xAxis, yAxis, behavior: "none" }));
     cursor.lineY.set("visible", false);
@@ -1453,27 +1485,32 @@ Begin your response with Section 1.
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
                   <span className="mb-2 block font-medium">Birth year</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
-                    type="number"
+                    className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={4}
                     value={birthYear}
-                    onChange={(event) => setBirthYear(Number(event.target.value || 1980))}
+                    onChange={(event) => setBirthYear(Number(event.target.value.replace(/[^0-9]/g, "").slice(0, 4) || 1980))}
                   />
                 </label>
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
                   <span className="mb-2 block font-medium">Retirement age</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
-                    type="number"
+                    className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
                     value={retirementAge}
-                    onChange={(event) => setRetirementAge(Number(event.target.value || 67))}
+                    onChange={(event) => setRetirementAge(Number(event.target.value.replace(/[^0-9]/g, "").slice(0, 2) || 67))}
                   />
                 </label>
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
                   <span className="mb-2 block font-medium">Average yield % pension funds</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                     type="text"
                     inputMode="numeric"
+                    maxLength={2}
                     value={pensionYield}
                     onChange={(event) => setPensionYield(Number(sanitizeNumericPercent(event.target.value) || 0))}
                   />
@@ -1481,9 +1518,10 @@ Begin your response with Section 1.
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
                   <span className="mb-2 block font-medium">Average yield % less liquid assets</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                     type="text"
                     inputMode="numeric"
+                    maxLength={2}
                     value={illiquidYield}
                     onChange={(event) => setIlliquidYield(Number(sanitizeNumericPercent(event.target.value) || 0))}
                   />
@@ -1491,30 +1529,23 @@ Begin your response with Section 1.
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
                   <span className="mb-2 block font-medium">Expected % inflation rate</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                     type="text"
                     inputMode="numeric"
+                    maxLength={2}
                     value={inflationRate}
                     onChange={(event) => setInflationRate(Number(sanitizeNumericPercent(event.target.value) || 0))}
                   />
                 </label>
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                  <span className="mb-2 block font-medium">Expected tax rate pension funds</span>
+                  <span className="mb-2 block font-medium">Expected tax% rate pension funds</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                     type="text"
                     inputMode="numeric"
+                    maxLength={2}
                     value={pensionTaxRate}
                     onChange={(event) => setPensionTaxRate(Number(sanitizeNumericPercent(event.target.value) || 0))}
-                  />
-                </label>
-                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                  <span className="mb-2 block font-medium">Yearly pension savings to retirement</span>
-                  <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
-                    type="number"
-                    value={yearlyPensionSavings}
-                    onChange={(event) => setYearlyPensionSavings(Number(event.target.value || 0))}
                   />
                 </label>
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
@@ -1529,28 +1560,59 @@ Begin your response with Section 1.
                     Drives the Yearly spending line in the retirement income graph. Defaults to your current monthly outgoings until you set it.
                   </span>
                 </label>
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+              <p className="text-sm font-medium text-slate-500">PUR, - pension savings from today until retirement</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                Additional pension contribution, The pension payments you expect to make from today, until retirement
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                  <span className="mb-2 block font-medium">Yearly pension savings to retirement - from age</span>
+                  <span className="mb-2 block font-medium">Additional pension contribution : Yearly additional pension contribution until retirement</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    className="w-28 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                     type="number"
+                    value={yearlyPensionSavings}
+                    onChange={(event) => setYearlyPensionSavings(Number(event.target.value || 0))}
+                  />
+                  <span className="mt-2 block text-xs leading-5 text-slate-500">
+                    How much do you expect to pay into pension contribution from today until retirement
+                  </span>
+                </label>
+                <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
+                  <span className="mb-2 block font-medium">The Additional pension contribution, at what age will you start payout of this ?</span>
+                  <input
+                    className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
                     value={additionalPensionStartAge}
-                    onChange={(event) => setAdditionalPensionFromAge(Number(event.target.value || 0))}
+                    onChange={(event) => {
+                      const digits = event.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+                      setAdditionalPensionFromAge(digits === "" ? null : Number(digits));
+                    }}
                   />
                   <span className="mt-2 block text-xs leading-5 text-slate-500">
                     Your yearly savings are paid out as the Additional pension contribution from this age. Defaults to the year after retirement.
                   </span>
                 </label>
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                  <span className="mb-2 block font-medium">Yearly pension savings to retirement - years</span>
+                  <span className="mb-2 block font-medium">The Additional pension contribution, how many years will they be paid out over?</span>
                   <input
-                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
-                    type="number"
+                    className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={2}
                     value={additionalPensionPayoutYears}
-                    onChange={(event) => setAdditionalPensionYears(Number(event.target.value || 0))}
+                    onChange={(event) => {
+                      const digits = event.target.value.replace(/[^0-9]/g, "").slice(0, 2);
+                      setAdditionalPensionYears(digits === "" ? null : Number(digits));
+                    }}
                   />
                   <span className="mt-2 block text-xs leading-5 text-slate-500">
-                    How many yearly payouts the Additional pension contribution makes. Defaults to paying until age 85.
+                    Over how many years do you want the additional pension contribution to be paid out. Defaults to 10 years.
                   </span>
                 </label>
               </div>
@@ -1595,6 +1657,7 @@ Begin your response with Section 1.
                 ) : (
                   <>
                     <div ref={incomeChartRef} className="mt-5 h-[380px]" />
+                    <div ref={incomeLegendRef} className="mt-3 flex flex-wrap gap-x-4 gap-y-2" />
                     {fundingOverview.unspentInvestmentFunds > 0 && (
                       <p className="mt-4 text-sm text-slate-600">
                         Unspent investment funds:{" "}
@@ -1602,6 +1665,15 @@ Begin your response with Section 1.
                           {fundingOverview.unspentInvestmentFunds.toLocaleString("en-US")}
                         </span>{" "}
                         left from age 86.
+                      </p>
+                    )}
+                    {unspentInvestmentFundsNpv > 0 && (
+                      <p className="mt-1 text-sm text-slate-600">
+                        Net present day value of unspent investment fund:{" "}
+                        <span className="font-medium tabular-nums text-slate-900">
+                          {unspentInvestmentFundsNpv.toLocaleString("en-US")}
+                        </span>
+                        .
                       </p>
                     )}
                   </>
@@ -1798,6 +1870,12 @@ Begin your response with Section 1.
                     Unspent investment funds:{" "}
                     <span className="font-medium tabular-nums text-slate-900">{fundingOverview.unspentInvestmentFunds.toLocaleString("en-US")}</span>{" "}
                     left from age 86.
+                  </p>
+                )}
+                {unspentInvestmentFundsNpv > 0 && (
+                  <p className="mt-1 text-sm leading-6 text-slate-600">
+                    Net present day value of unspent investment fund:{" "}
+                    <span className="font-medium tabular-nums text-slate-900">{unspentInvestmentFundsNpv.toLocaleString("en-US")}</span>.
                   </p>
                 )}
               </div>
