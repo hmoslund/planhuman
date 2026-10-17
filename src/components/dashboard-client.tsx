@@ -482,7 +482,7 @@ export function DashboardClient() {
     let runningBalance = cValue;
 
     years.forEach((year) => {
-      // Column C: estimated returns = assets/investments x average yield % less liquid assets
+      // Column C: estimated returns = assets/investments x average yield % C: Investments
       const returns = runningBalance * (illiquidYield / 100);
       // Cashflow — editable per year, falling back to the flat computed default (net
       // monthly income minus outgoings, annualized) for any year not overridden.
@@ -1516,7 +1516,7 @@ Begin your response with Section 1.
                   />
                 </label>
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                  <span className="mb-2 block font-medium">Average yield % less liquid assets</span>
+                  <span className="mb-2 block font-medium">Average yield % C: Investments</span>
                   <input
                     className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                     type="text"
@@ -1565,8 +1565,9 @@ Begin your response with Section 1.
 
             <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
               <p className="text-sm font-medium text-slate-500">PUR, - pension savings from today until retirement</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Additional pension contribution, The pension payments you expect to make from today, until retirement
+              <p className="mt-2 text-sm font-semibold text-slate-900">Additional pension contribution</p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">
+                The pension payments you expect to make from today, until retirement
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
@@ -1686,7 +1687,7 @@ Begin your response with Section 1.
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">Retirement table</p>
+                      <p className="text-sm font-medium text-slate-500">RT · Retirement table</p>
                       <h2 className="text-lg font-semibold text-slate-900">Pension projection</h2>
                     </div>
                     <div className="text-sm text-slate-500">Editable forecast</div>
@@ -1743,7 +1744,7 @@ Begin your response with Section 1.
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">Asset projection</p>
+                      <p className="text-sm font-medium text-slate-500">AP · Asset projection</p>
                       <h2 className="text-lg font-semibold text-slate-900">Assets and investments</h2>
                     </div>
                     <div className="text-sm text-slate-500">Editable forecast</div>

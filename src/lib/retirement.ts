@@ -137,7 +137,7 @@ function payoutEndAge(startAge: number, payoutYears: number | "lifelong" | undef
  *     inflation and then compounded year over year.
  *   • Tax — each year's pension total (before tax) is reduced once by "Expected tax rate
  *     pension funds"; that after-tax total is what the year is funded with.
- *   • Investments — today's block C total grows with "Average yield % less liquid assets"
+ *   • Investments — today's block C total grows with "Average yield % C: Investments"
  *     each year; whenever (pensions after tax − yearly spend) is negative, exactly that
  *     amount is drawn from it — never more than it holds.
  */
@@ -292,7 +292,7 @@ export type FundingOverviewInput = {
   pensionRows: PensionPayoutRow[];
   /** Today's total of block C — grows with `investmentYieldPct` and funds any gap. */
   investmentBalance: number;
-  /** "Average yield % less liquid assets" from PF Planning focus. */
+  /** "Average yield % C: Investments" from PF Planning focus. */
   investmentYieldPct: number;
   /** Expected monthly spend after retirement × 12, in today's money. */
   yearlyExpenses: number;
