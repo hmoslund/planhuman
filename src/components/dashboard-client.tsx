@@ -8,6 +8,7 @@ import am5themes_Animated from "@amcharts/amcharts5/themes/Animated";
 import { curveMonotoneX } from "d3-shape";
 import { calculateWealth, getCountryInfo, normalizeCurrency, COUNTRY_CODES, CURRENCIES, toCurrency } from "@/lib/wealth";
 import { blockTranslations, guideCopy, type BlockCopy, type CountryCode } from "@/lib/block-copy";
+import { sectionCopy, type SectionCopy } from "@/lib/section-copy";
 import {
   afterTaxAmount,
   buildRetirementFundingOverview,
@@ -109,6 +110,13 @@ function getBlockCopy(key: string, language: CountryCode) {
 
 function getGuideCopy(language: CountryCode) {
   return { ...guideCopy.UK, ...(guideCopy[language] ?? {}) };
+}
+
+// Label / heading / description of the planning & analysis sections (AI, PF, PUR,
+// RI, FR), resolved for the live language exactly like getBlockCopy does for the
+// wealth blocks.
+function getSectionCopy(key: string, language: CountryCode): SectionCopy {
+  return sectionCopy[language]?.[key] ?? sectionCopy.UK[key] ?? sectionCopy.US[key];
 }
 
 function sanitizeNumericInput(value: string) {
@@ -380,6 +388,10 @@ export function DashboardClient() {
 
   const guide = useMemo(() => getGuideCopy(selectedLanguage), [selectedLanguage]);
 
+  // Section copy (AI, PF, PUR, RI, FR) in the live language — follows the same
+  // language dropdown as the wealth-block copy.
+  const sec = (key: string) => getSectionCopy(key, selectedLanguage);
+
   // Start with the two blocks every user can answer from memory, and which drive every
   // chart on the page. Then the balance sheet in liquidity order. Rarely-used blocks sit
   // behind a disclosure; pensions and notes sit together at the end.
@@ -482,7 +494,7 @@ export function DashboardClient() {
     let runningBalance = cValue;
 
     years.forEach((year) => {
-      // Column C: estimated returns = assets/investments x average yield % C: Investments
+      // Column C: estimated returns = assets/investments x average after tax yield % for investments in block C
       const returns = runningBalance * (illiquidYield / 100);
       // Cashflow — editable per year, falling back to the flat computed default (net
       // monthly income minus outgoings, annualized) for any year not overridden.
@@ -649,7 +661,7 @@ useEffect(() => {
   }, [retirementProjections, assetProjections, smoothingHorizontal, smoothingVertical, strokeWidth]);
 
   // Retirement income vs. spending — built from the funding overview, so this chart and
-  // the "Funding after retirement" table can never disagree: one stacked segment per
+  // the "FR Funding after retirement" table can never disagree: one stacked segment per
   // pension fund (before/after tax per the toggle), the investment draw, and the yearly
   // spending line. Same amCharts setup as above; deliberately no hover tooltips — the
   // legend and the cursor carry the interaction instead.
@@ -1393,15 +1405,13 @@ Begin your response with Section 1.
                 <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
               ))}
               <div className="rounded-[24px] border border-violet-200 bg-violet-50 p-5 shadow-sm">
-                <p className="text-sm font-medium text-violet-500">AI</p>
-                <h2 className="mt-1 text-lg font-semibold text-violet-900">AI guided advisory</h2>
-                <p className="mt-2 text-sm leading-6 text-violet-700/80">
-                  Build your AI prompt. You can copy the ai-text and paste into ChatGpt.com or any other AI agents, and continue your dialogue with the AI agent of your choise. You can edit the text, and ask your burning questions; for example “When can I afford a second car, based on the information”
-                </p>
+                <p className="text-sm font-medium text-violet-500">{sec("AI").label}</p>
+                <h2 className="mt-1 text-lg font-semibold text-violet-900">{sec("AI").heading}</h2>
+                <p className="mt-2 text-sm leading-6 text-violet-700/80">{sec("AI").description}</p>
                 <textarea
                   rows={8}
                   className="mt-4 w-full rounded-2xl border border-violet-200 bg-white p-4 text-sm leading-6 text-slate-800 outline-none"
-                  placeholder="Your AI prompt will appear here. You can edit it freely before pasting it into an AI agent."
+                  placeholder={sec("AI").placeholder}
                   value={aiPrompt}
                   onChange={(event) => setAiPrompt(event.target.value)}
                 />
@@ -1437,8 +1447,8 @@ Begin your response with Section 1.
             <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Assets / liabilities balance overview</p>
-                  <h2 className="text-lg font-semibold text-slate-900">Projection to retirement</h2>
+                  <p className="text-sm font-medium text-slate-500">ALO Assets / liabilities balance overview</p>
+                  <h2 className="text-lg font-semibold text-slate-900">Projection, growth in investment funds (C) until retirement. You can use block AP Asset projection to make adjustments year over year</h2>
                 </div>
                 <div className="max-w-[16rem] text-right text-sm text-slate-500">Grows from Investments (C) plus your monthly surplus</div>
               </div>
@@ -1452,7 +1462,7 @@ Begin your response with Section 1.
             <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Retirement funds</p>
+                  <p className="text-sm font-medium text-slate-500">RF Retirement funds</p>
                   <h2 className="text-lg font-semibold text-slate-900">Until retirement</h2>
                 </div>
                 <div className="max-w-[16rem] text-right text-sm text-slate-500">Pension pot only — other assets are not drawn down</div>
@@ -1464,9 +1474,9 @@ Begin your response with Section 1.
             )}
 
             <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">PF Planning focus</p>
-              <p className="mt-2 text-lg font-semibold text-slate-900">Tailor the outlook to your life stage</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">These assumptions help the planner reflect your personal retirement trajectory.</p>
+              <p className="text-sm font-medium text-slate-500">{sec("PF").label}</p>
+              <p className="mt-2 text-lg font-semibold text-slate-900">{sec("PF").heading}</p>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{sec("PF").description}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <button
                   className={`rounded-full px-4 py-2 text-sm font-medium ${showWealthPlanner ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
@@ -1516,7 +1526,7 @@ Begin your response with Section 1.
                   />
                 </label>
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
-                  <span className="mb-2 block font-medium">Average yield % C: Investments</span>
+                  <span className="mb-2 block font-medium">Average after tax yield % for investments in block C</span>
                   <input
                     className="w-20 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none"
                     type="text"
@@ -1564,10 +1574,10 @@ Begin your response with Section 1.
             </div>
 
             <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
-              <p className="text-sm font-medium text-slate-500">PUR, - pension savings from today until retirement</p>
-              <p className="mt-2 text-sm font-semibold text-slate-900">Additional pension contribution</p>
+              <p className="text-sm font-medium text-slate-500">{sec("PUR").label}</p>
+              <p className="mt-2 text-sm font-semibold text-slate-900">{sec("PUR").heading}</p>
               <p className="mt-1 text-sm leading-6 text-slate-600">
-                The pension payments you expect to make from today, until retirement
+                {sec("PUR").description}
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
@@ -1623,12 +1633,9 @@ Begin your response with Section 1.
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-slate-500">Retirement income</p>
-                    <h2 className="text-lg font-semibold text-slate-900">Retirement income vs. spending</h2>
-                    <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">
-                      Funding after retirement: each year is paid by your pensions — and, whenever the pensions after tax do not cover your yearly
-                      spending, the missing amount is drawn from your investment funds.
-                    </p>
+                    <p className="text-sm font-medium text-slate-500">{sec("RI").label}</p>
+                    <h2 className="text-lg font-semibold text-slate-900">{sec("RI").heading}</h2>
+                    <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-600">{sec("RI").description}</p>
                   </div>
                   {pensionIncomeConfigured && fundingOverview.rows.length > 0 && (
                     <div className="flex items-center gap-2">
@@ -1687,7 +1694,7 @@ Begin your response with Section 1.
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">RT · Retirement table</p>
+                      <p className="text-sm font-medium text-slate-500">RT Retirement table</p>
                       <h2 className="text-lg font-semibold text-slate-900">Pension projection</h2>
                     </div>
                     <div className="text-sm text-slate-500">Editable forecast</div>
@@ -1744,7 +1751,7 @@ Begin your response with Section 1.
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">AP · Asset projection</p>
+                      <p className="text-sm font-medium text-slate-500">AP Asset projection</p>
                       <h2 className="text-lg font-semibold text-slate-900">Assets and investments</h2>
                     </div>
                     <div className="text-sm text-slate-500">Editable forecast</div>
@@ -1799,12 +1806,10 @@ Begin your response with Section 1.
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-slate-500">Funding after retirement</p>
-                    <h2 className="text-lg font-semibold text-slate-900">Pensions and investments per year</h2>
+                    <p className="text-sm font-medium text-slate-500">{sec("FR").label}</p>
+                    <h2 className="text-lg font-semibold text-slate-900">{sec("FR").heading}</h2>
                     <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-                      Every year from your retirement year to age {CHART_END_AGE}: the payout of each pension, the Additional pension contribution built
-                      from your yearly savings, your inflation-adjusted spend — and what the investment funds must cover when your pensions after tax
-                      are not enough.
+                      {sec("FR").description.replace("{age}", String(CHART_END_AGE))}
                     </p>
                   </div>
                   <div className="text-sm text-slate-500">Tax rate on pension funds: {pensionTaxRate}%</div>

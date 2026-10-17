@@ -122,7 +122,7 @@ function payoutEndAge(startAge: number, payoutYears: number | "lifelong" | undef
 /**
  * Funding overview — one row per year from the retirement year to age 85, showing how
  * the pensions and the investment funds pay the living expenses. This is the single
- * source behind both the "Funding after retirement" table and the retirement-income
+ * source behind both the "FR Funding after retirement" table and the retirement-income
  * chart.
  *
  *   • Start amount — each block E balance is projected to its payout year:
@@ -137,7 +137,7 @@ function payoutEndAge(startAge: number, payoutYears: number | "lifelong" | undef
  *     inflation and then compounded year over year.
  *   • Tax — each year's pension total (before tax) is reduced once by "Expected tax rate
  *     pension funds"; that after-tax total is what the year is funded with.
- *   • Investments — today's block C total grows with "Average yield % C: Investments"
+ *   • Investments — today's block C total grows with "Average after tax yield % for investments in block C"
  *     each year; whenever (pensions after tax − yearly spend) is negative, exactly that
  *     amount is drawn from it — never more than it holds.
  */
@@ -292,7 +292,7 @@ export type FundingOverviewInput = {
   pensionRows: PensionPayoutRow[];
   /** Today's total of block C — grows with `investmentYieldPct` and funds any gap. */
   investmentBalance: number;
-  /** "Average yield % C: Investments" from PF Planning focus. */
+  /** "Average after tax yield % for investments in block C" from PF Planning focus. */
   investmentYieldPct: number;
   /** Expected monthly spend after retirement × 12, in today's money. */
   yearlyExpenses: number;
