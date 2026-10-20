@@ -373,23 +373,23 @@ export function DashboardClient() {
   );
 
   const wealthBoxOverview = useMemo(() => {
-    const items = [
-      { key: "A", value: blocks.A?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-      { key: "A2", value: blocks.A2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "B", value: blocks.B?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-      { key: "B2", value: blocks.B2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "C", value: blocks.C?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-      { key: "C2", value: blocks.C2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "D", value: blocks.D?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-      { key: "D2", value: blocks.D2?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#fecaca" },
-      { key: "E", value: blocks.E?.reduce((sum, row) => sum + Number(row.value || 0), 0) ?? 0, color: "#2563eb" },
-    ].filter(({ key }) => key !== "H");
-    const maxValue = Math.max(...items.map((item) => item.value), 1);
-    return items.map((item) => ({
-      ...item,
-      label: `${item.key}. ${translatedBlockMeta.find((meta) => meta.key === item.key)?.title ?? item.key}`,
-      width: Math.max(8, Math.round((item.value / maxValue) * 100)),
-    }));
+    const sum = (key: string) =>
+      (blocks[key] ?? []).reduce((total, row) => total + Number(row.value || 0), 0);
+    const getLabel = (key: string) =>
+      `${key}. ${translatedBlockMeta.find((meta) => meta.key === key)?.title ?? key}`;
+    const assetKeys = ["A", "B", "C", "D", "E"];
+    const debtKeys = ["A2", "B2", "C2", "D2"];
+    return {
+      assets: assetKeys
+        .map((key) => ({ key, label: getLabel(key), value: sum(key) }))
+        .filter((item) => item.value !== 0),
+      debts: debtKeys
+        .map((key) => ({ key, label: getLabel(key), value: sum(key) }))
+        .filter((item) => item.value !== 0),
+      netWorth:
+        assetKeys.reduce((total, key) => total + sum(key), 0) -
+        debtKeys.reduce((total, key) => total + sum(key), 0),
+    };
   }, [blocks, translatedBlockMeta]);
 
   const guide = useMemo(() => getGuideCopy(selectedLanguage), [selectedLanguage]);
@@ -521,6 +521,27 @@ export function DashboardClient() {
     return projections;
   }, [retirementYear, cValue, illiquidYield, summary.cashflow, cashflowOverrides]);
 
+  // Future value of the investment funds at the retirement start year. Mirrors the
+  // AP Asset projection maths exactly — today's block C sum grown year over year at
+  // the PF "Average after tax yield % for investments in block C", plus the yearly
+  // cashflow (monthly surplus × 12, overridable per year) treated as money newly
+  // invested each year. This is what FR uses as its starting investment funds.
+  const investmentFundsAtRetirement = useMemo(() => {
+    const startYear = 2027;
+    const endYear = retirementYear;
+    const years = Array.from({ length: Math.max(endYear - startYear + 1, 0) }, (_, idx) => startYear + idx);
+    const yearlyCashflow = summary.cashflow * 12;
+    let runningBalance = cValue;
+
+    years.forEach((year) => {
+      const returns = runningBalance * (illiquidYield / 100);
+      const cashflow = cashflowOverrides[year] ?? yearlyCashflow;
+      runningBalance = runningBalance + returns + cashflow;
+    });
+
+    return Math.round(Math.max(runningBalance, 0));
+  }, [retirementYear, cValue, illiquidYield, summary.cashflow, cashflowOverrides]);
+
   // Payout window of the Additional pension contribution — defaults are the year
   // after retirement and a 10-year payout, until the user pins them in PUR.
   const additionalPensionStartAge = additionalPensionFromAge ?? retirementAge + 1;
@@ -533,7 +554,7 @@ export function DashboardClient() {
     () =>
       buildRetirementFundingOverview({
         pensionRows: blocks.E ?? [],
-        investmentBalance: cValue,
+        investmentBalance: investmentFundsAtRetirement,
         investmentYieldPct: illiquidYield,
         yearlyExpenses: retirementYearlySpend,
         birthYear,
@@ -553,6 +574,7 @@ export function DashboardClient() {
       blocks.E,
       cValue,
       illiquidYield,
+      investmentFundsAtRetirement,
       retirementYearlySpend,
       birthYear,
       retirementAge,
@@ -1264,21 +1286,72 @@ Begin your response with Section 1.
               </div>
               <div className="text-sm text-slate-500">Brief overview</div>
             </div>
-            <div className="mt-6 space-y-3">
-              {wealthBoxOverview.map((item) => (
-                <div key={item.key} className="flex items-center gap-3">
-                  <div className="h-10 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
-                      <span className="truncate font-medium">{item.label}</span>
-                      <span className="font-semibold text-slate-900">{toCurrency(item.value, currency)}</span>
-                    </div>
-                    <div className="mt-2 h-2 rounded-full bg-slate-100">
-                      <div className="h-2 rounded-full" style={{ width: `${item.width}%`, backgroundColor: item.color }} />
-                    </div>
+            <div className="mt-6 space-y-4">
+              {/* Net worth hero row */}
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Net worth</p>
+                    <p className="mt-1 text-xl font-semibold tabular-nums text-slate-900">
+                      {toCurrency(wealthBoxOverview.netWorth, currency)}
+                    </p>
                   </div>
                 </div>
-              ))}
+              </div>
+
+              {/* Assets */}
+              {wealthBoxOverview.assets.length > 0 && (
+                <>
+                  <p className="px-2 mt-1 mb-1 text-xs font-semibold uppercase tracking-wider text-emerald-600">
+                    Assets
+                  </p>
+                  <div className="space-y-0">
+                    {wealthBoxOverview.assets.map((item) => (
+                      <div
+                        key={item.key}
+                        className="grid grid-cols-[1fr_auto] gap-4 py-3 border-b border-slate-100 last:border-b-0 text-sm"
+                      >
+                        <span className="font-medium text-slate-600 leading-5">
+                          {item.label}
+                        </span>
+                        <span className="font-semibold tabular-nums text-slate-900 text-right">
+                          {toCurrency(item.value, currency)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Debts */}
+              {wealthBoxOverview.debts.length > 0 && (
+                <>
+                  <p className="px-2 mt-3 mb-1 text-xs font-semibold uppercase tracking-wider text-red-600">
+                    Debts
+                  </p>
+                  <div className="space-y-0">
+                    {wealthBoxOverview.debts.map((item) => (
+                      <div
+                        key={item.key}
+                        className="grid grid-cols-[1fr_auto] gap-4 py-3 border-b border-slate-100 last:border-b-0 text-sm"
+                      >
+                        <span className="font-medium text-slate-600 leading-5">
+                          {item.label}
+                        </span>
+                        <span className="font-semibold tabular-nums text-red-600 text-right">
+                          {toCurrency(item.value, currency)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {wealthBoxOverview.assets.length === 0 && wealthBoxOverview.debts.length === 0 && (
+                <p className="px-4 py-4 text-sm text-slate-400 text-center">
+                  No wealth blocks added yet.
+                </p>
+              )}
             </div>
           </div>
 
@@ -1456,10 +1529,13 @@ Begin your response with Section 1.
                   <p className="text-sm font-medium text-slate-500">ALO Assets / liabilities balance overview</p>
                   <h2 className="text-lg font-semibold text-slate-900">Projection, growth in investment funds (C) until retirement. You can use block AP Asset projection to make adjustments year over year</h2>
                 </div>
-                <div className="max-w-[16rem] text-right text-sm text-slate-500">Grows from Investments (C) plus your monthly surplus</div>
+                <div className="max-w-[16rem] text-right text-sm text-slate-500">Investments (C) plus yearly cashflow, compounded at the PF investment yield</div>
               </div>
               <div className="mt-5">
                 <div ref={assetChartRef} className="h-[320px]" />
+                <p className="mt-3 text-xs text-slate-500 leading-5">
+                  The chart adds your yearly cashflow (income − outgoings) as new money invested each year — so cashflow becomes investment funds and keeps growing at the PF "Average after tax yield % for investments in block C". The same future value (incl. cashflow) is used as the starting investment funds in block FR Funding after retirement table.
+                </p>
               </div>
             </div>
             )}
@@ -1750,6 +1826,9 @@ Begin your response with Section 1.
                       </tbody>
                     </table>
                   </div>
+                  <p className="mt-3 text-xs text-slate-500 leading-5">
+                    Each pension of type "draw back" (drawdown) is projected from today's balance to its payout year at the PF "Average yield % pension funds" — so the yield from now until the pension year is reflected — and then turned into a level yearly annuity over its payout years at the same yield. This per-pension calculation lives in lib/retirement.ts and drives block FR Funding after retirement table and the retirement-income graph. RT shows the aggregate block E pension-and-reserves path.
+                  </p>
                 </div>
               )}
 
@@ -1804,6 +1883,9 @@ Begin your response with Section 1.
                       </tbody>
                     </table>
                   </div>
+                  <p className="mt-3 text-xs text-slate-500 leading-5">
+                    A positive monthly cashflow is treated as new money invested each year — it is added to the investment funds here in AP, it builds up as investment funds in the ALO Assets graph, and it is part of the future value used as the starting investment funds in block FR Funding after retirement table.
+                  </p>
                 </div>
               )}
             </div>
@@ -1822,29 +1904,39 @@ Begin your response with Section 1.
                 </div>
 
                 <div className="mt-5 overflow-x-auto">
-                  <table className="min-w-full text-left text-sm text-slate-700">
+                  <table className="min-w-full text-left text-sm text-slate-900">
                     <thead>
                       <tr>
-                        <th className="border-b border-slate-200 pb-3 font-medium">Year</th>
-                        <th className="border-b border-slate-200 pb-3 font-medium">Age</th>
+                        <th className="border-b border-slate-200 pb-3 font-medium text-slate-900">Year</th>
+                        <th className="border-b border-orange-200 pb-3 font-medium text-slate-900 bg-orange-50">Age</th>
                         {fundingOverview.funds.map((fund) => (
-                          <th key={fund.key} className="border-b border-slate-200 pb-3 text-right font-medium">
+                          <th key={fund.key} className="border-b border-slate-200 pb-3 text-right font-medium text-slate-900">
                             {fund.name}
                           </th>
                         ))}
-                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Pension total</th>
-                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Pension total after tax</th>
-                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Yearly spend</th>
-                        <th className="border-b border-slate-200 pb-3 text-right font-medium">From investments</th>
-                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Not covered</th>
-                        <th className="border-b border-slate-200 pb-3 text-right font-medium">Investment funds left</th>
+                        <th className="border-b border-slate-200 pb-3 text-right font-medium text-slate-900 bg-slate-100">Pension total</th>
+                        <th className="border-b border-green-200 pb-3 text-right font-medium text-slate-900 bg-green-50">
+                          Pension total after tax
+                        </th>
+                        <th className="border-b border-yellow-200 pb-3 text-right font-medium text-slate-900 bg-yellow-50">
+                          Yearly spend
+                        </th>
+                        <th className="border-b border-amber-200 pb-3 text-right font-medium text-slate-900 bg-amber-50">
+                          From investments
+                        </th>
+                        <th className="border-b border-rose-200 pb-3 text-right font-medium text-slate-900 bg-rose-50">
+                          Not covered
+                        </th>
+                        <th className="border-b border-blue-200 pb-3 text-right font-medium text-slate-900 bg-blue-50">
+                          Investment funds left
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {fundingOverview.rows.map((row) => (
                         <tr key={row.year} className="border-b border-slate-200 last:border-none">
                           <td className="py-3 pr-4 font-medium text-slate-900">{row.year}</td>
-                          <td className="py-3 pr-4 text-slate-500">{row.age}</td>
+                          <td className="py-3 pr-4 bg-orange-50 text-slate-900">{row.age}</td>
                           {fundingOverview.funds.map((fund) => {
                             const payout = row.payouts.find((entry) => entry.key === fund.key);
                             return (
@@ -1853,18 +1945,18 @@ Begin your response with Section 1.
                               </td>
                             );
                           })}
-                          <td className="py-3 text-right tabular-nums text-slate-700">{formatThousands(row.pensionsTotal)}</td>
-                          <td className="py-3 text-right font-medium tabular-nums text-slate-900">
+                          <td className="py-3 text-right tabular-nums bg-slate-100 text-slate-900">{formatThousands(row.pensionsTotal)}</td>
+                          <td className="py-3 text-right font-medium tabular-nums bg-green-50 text-slate-900">
                             {formatThousands(row.pensionTotalAfterTax)}
                           </td>
-                          <td className="py-3 text-right tabular-nums text-slate-700">{formatThousands(row.spending)}</td>
-                          <td className={`py-3 text-right tabular-nums ${row.fromInvestments > 0 ? "text-amber-700" : "text-slate-400"}`}>
+                          <td className="py-3 text-right tabular-nums bg-yellow-50 text-slate-900">{formatThousands(row.spending)}</td>
+                          <td className="py-3 text-right tabular-nums bg-amber-50 text-slate-900">
                             {row.fromInvestments > 0 ? formatThousands(row.fromInvestments) : "—"}
                           </td>
-                          <td className={`py-3 text-right tabular-nums ${row.unfunded > 0 ? "font-medium text-rose-700" : "text-slate-400"}`}>
+                          <td className={`py-3 text-right tabular-nums bg-rose-50 text-slate-900 ${row.unfunded > 0 ? "font-medium" : ""}`}>
                             {row.unfunded > 0 ? formatThousands(row.unfunded) : "—"}
                           </td>
-                          <td className="py-3 text-right tabular-nums text-slate-600">{formatThousands(row.investmentFundsLeft)}</td>
+                          <td className="py-3 text-right tabular-nums bg-blue-50 text-slate-900">{formatThousands(row.investmentFundsLeft)}</td>
                         </tr>
                       ))}
                     </tbody>

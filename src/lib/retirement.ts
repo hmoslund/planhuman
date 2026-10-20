@@ -126,9 +126,12 @@ function payoutEndAge(startAge: number, payoutYears: number | "lifelong" | undef
  * chart.
  *
  *   • Start amount — each block E balance is projected to its payout year:
- *     FV = PV × (1 + yield)^years, yield = "Average yield % pension funds".
- *   • Drawdown payout — that start amount becomes the level payout of the annuity-due
- *     payment formula, over that pension's own payout years, at the same yield.
+ *     FV = PV × (1 + yield)^years, where yield is "Average yield % pension funds" and
+ *     years runs from currentYear to the pension's payout year — so the yield from now
+ *     until the pension year is reflected in the start amount.
+ *   • Drawdown ("draw back") payout — that future-value start amount becomes the level
+ *     payout of the annuity-due payment formula, over that pension's own payout years,
+ *     at the same PF yield.
  *   • Annuity payout — the entered yearly payment, increased with "Expected % inflation
  *     rate" from today to the year it is paid.
  *   • Additional pension contribution — the Retirement table's yearly savings,
