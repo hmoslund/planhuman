@@ -70,7 +70,7 @@ const blockMeta = [
   { key: "B", title: "Locked savings & money owed to you, and expected extraordinary earnings / payments", blurb: "Yours, but weeks or months away." },
   { key: "B2", title: "Loans & bills you owe", blurb: "Money you already owe someone." },
   { key: "C", title: "Investments", blurb: "Money invested to grow over years." },
-  { key: "C2", title: "Debt and potential tax against investments", blurb: "Borrowing secured on your investments." },
+  { key: "C2", title: "Debt and potential tax against investments", blurb: "Borrowing secured on your investments" },
   { key: "D", title: "Your home & belongings", blurb: "What they would realistically sell for today." },
   { key: "D2", title: "Mortgage & loans on what you own", blurb: "Balance outstanding, not the payment." },
   { key: "E", title: "Pensions", blurb: "Retirement pots with a balance." },
