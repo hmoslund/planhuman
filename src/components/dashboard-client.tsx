@@ -1526,15 +1526,15 @@ Begin your response with Section 1.
             <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">ALO Assets / liabilities balance overview</p>
-                  <h2 className="text-lg font-semibold text-slate-900">Projection, growth in investment funds (C) until retirement. You can use block AP Asset projection to make adjustments year over year</h2>
+                  <p className="text-sm font-medium text-slate-500">{sec("ALO").label}</p>
+                  <h2 className="text-lg font-semibold text-slate-900">{sec("ALO").heading}</h2>
                 </div>
-                <div className="max-w-[16rem] text-right text-sm text-slate-500">Investments (C) plus yearly cashflow, compounded at the PF investment yield</div>
+                <div className="max-w-[16rem] text-right text-sm text-slate-500">{sec("ALO").sub}</div>
               </div>
               <div className="mt-5">
                 <div ref={assetChartRef} className="h-[320px]" />
                 <p className="mt-3 text-xs text-slate-500 leading-5">
-                  The chart adds your yearly cashflow (income − outgoings) as new money invested each year — so cashflow becomes investment funds and keeps growing at the PF "Average after tax yield % for investments in block C". The same future value (incl. cashflow) is used as the starting investment funds in block FR Funding after retirement table.
+                  {sec("ALO").description}
                 </p>
               </div>
             </div>
@@ -1544,10 +1544,10 @@ Begin your response with Section 1.
             <div className="mt-4 rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">RF Retirement funds</p>
-                  <h2 className="text-lg font-semibold text-slate-900">Until retirement</h2>
+                  <p className="text-sm font-medium text-slate-500">{sec("RF").label}</p>
+                  <h2 className="text-lg font-semibold text-slate-900">{sec("RF").heading}</h2>
                 </div>
-                <div className="max-w-[16rem] text-right text-sm text-slate-500">Pension pot only — other assets are not drawn down</div>
+                <div className="max-w-[16rem] text-right text-sm text-slate-500">{sec("RF").sub}</div>
               </div>
               <div className="mt-5">
                 <div ref={retirementChartRef} className="h-[320px]" />
@@ -1776,10 +1776,10 @@ Begin your response with Section 1.
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">RT Retirement table</p>
-                      <h2 className="text-lg font-semibold text-slate-900">Pension projection</h2>
+                      <p className="text-sm font-medium text-slate-500">{sec("RT").label}</p>
+                      <h2 className="text-lg font-semibold text-slate-900">{sec("RT").heading}</h2>
                     </div>
-                    <div className="text-sm text-slate-500">Editable forecast</div>
+                    <div className="text-sm text-slate-500">{sec("RT").sub}</div>
                   </div>
                   <div className="mt-5 overflow-x-auto">
                     <table className="min-w-full text-left text-sm text-slate-700">
@@ -1827,7 +1827,7 @@ Begin your response with Section 1.
                     </table>
                   </div>
                   <p className="mt-3 text-xs text-slate-500 leading-5">
-                    Each pension of type "draw back" (drawdown) is projected from today's balance to its payout year at the PF "Average yield % pension funds" — so the yield from now until the pension year is reflected — and then turned into a level yearly annuity over its payout years at the same yield. This per-pension calculation lives in lib/retirement.ts and drives block FR Funding after retirement table and the retirement-income graph. RT shows the aggregate block E pension-and-reserves path.
+                    {sec("RT").description}
                   </p>
                 </div>
               )}
@@ -1836,10 +1836,10 @@ Begin your response with Section 1.
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-500">AP Asset projection</p>
-                      <h2 className="text-lg font-semibold text-slate-900">Assets and investments</h2>
+                      <p className="text-sm font-medium text-slate-500">{sec("AP").label}</p>
+                      <h2 className="text-lg font-semibold text-slate-900">{sec("AP").heading}</h2>
                     </div>
-                    <div className="text-sm text-slate-500">Editable forecast</div>
+                    <div className="text-sm text-slate-500">{sec("AP").sub}</div>
                   </div>
                   <div className="mt-5 overflow-x-auto">
                     <table className="min-w-full text-left text-sm text-slate-700">
@@ -1884,7 +1884,7 @@ Begin your response with Section 1.
                     </table>
                   </div>
                   <p className="mt-3 text-xs text-slate-500 leading-5">
-                    A positive monthly cashflow is treated as new money invested each year — it is added to the investment funds here in AP, it builds up as investment funds in the ALO Assets graph, and it is part of the future value used as the starting investment funds in block FR Funding after retirement table.
+                    {sec("AP").description}
                   </p>
                 </div>
               )}
