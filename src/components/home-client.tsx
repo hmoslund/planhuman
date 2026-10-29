@@ -358,6 +358,9 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
               </div>
 
               {status && <p className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">{status}</p>}
+              <p className="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-600 leading-5">
+                For your safety, users without data will be deleted after 2 months. Users that have not been active for 12 months will be deleted.
+              </p>
 
               <button className="w-full rounded-2xl bg-slate-900 px-4 py-3 font-semibold text-white transition hover:bg-slate-800" type="submit" disabled={pending}>
                 {pending ? "Working..." : "Sign in"}
