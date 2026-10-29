@@ -2118,12 +2118,21 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
           <div key={row.id} className={`rounded-2xl border p-3 ${isGoalBlock && row.completed ? "border-sky-200 bg-sky-50 opacity-70" : isLiabilityBlock ? "border-rose-200 bg-white/80" : "border-slate-200 bg-slate-50"}`}>
             {isNoteBlock ? (
               <div className="space-y-3">
-                <input
-                  className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
-                  value={row.identifier}
-                  onChange={(event) => updateRow(meta.key, row.id, "identifier", event.target.value)}
-                  placeholder="Note title"
-                />
+                <div className="flex items-center gap-2">
+                  <input
+                    className="flex-1 min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                    value={row.identifier}
+                    onChange={(event) => updateRow(meta.key, row.id, "identifier", event.target.value)}
+                    placeholder="Note title"
+                  />
+                  <button
+                    className="shrink-0 rounded-2xl border border-slate-200 bg-white px-2.5 py-2 text-slate-700 hover:bg-slate-100"
+                    onClick={() => deleteRow(meta.key, row.id)}
+                    aria-label="Delete note"
+                  >
+                    <span aria-hidden="true">🗑</span>
+                  </button>
+                </div>
                 <textarea
                   className="w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
                   value={row.detail ?? ""}
@@ -2131,10 +2140,6 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                   placeholder="Write your note here"
                   rows={3}
                 />
-                <button className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700" onClick={() => deleteRow(meta.key, row.id)}>
-                  <span aria-hidden="true">🗑</span>
-                  <span className="sr-only">Delete note</span>
-                </button>
               </div>
             ) : isPensionBlock ? (
               <div className="flex flex-wrap items-center gap-3">
@@ -2221,58 +2226,93 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                 </>
               )}
               <button
-                className="ml-auto inline-flex items-center justify-center rounded-2xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700"
+                className="ml-auto shrink-0 rounded-2xl border border-slate-200 bg-white px-2.5 py-2 text-slate-700 hover:bg-slate-100"
                 onClick={() => deleteRow(meta.key, row.id)}
+                aria-label="Delete pension row"
               >
                 <span aria-hidden="true">🗑</span>
-                <span className="sr-only">Delete pension row</span>
               </button>
             </div>
             ) : (
-              <div className={`grid gap-3 ${isGoalBlock ? "md:grid-cols-[auto_1.2fr_0.55fr_0.55fr_auto]" : "md:grid-cols-[1.2fr_0.5fr_auto]"}`}>
-                {isGoalBlock && (
-                  <label className="flex items-center justify-center">
+              <div className="gap-3">
+                {isGoalBlock ? (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center justify-center shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={!!row.completed}
+                          onChange={() => toggleComplete(meta.key, row.id)}
+                          className="h-5 w-5 rounded border-slate-300 accent-sky-600"
+                          aria-label="Mark goal complete"
+                        />
+                      </label>
+                      <input
+                        className="flex-1 min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                        value={row.identifier}
+                        onChange={(event) => updateRow(meta.key, row.id, "identifier", event.target.value)}
+                        placeholder="Goal"
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        className="max-w-[10rem] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={9}
+                        value={row.value}
+                        onChange={(event) => updateRow(meta.key, row.id, "value", event.target.value)}
+                        placeholder="Target"
+                      />
+                      <input
+                        className="max-w-[10rem] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={9}
+                        value={row.detail ?? ""}
+                        onChange={(event) => updateRow(meta.key, row.id, "detail", event.target.value)}
+                        placeholder="Status"
+                      />
+                      <button
+                        className="shrink-0 rounded-2xl border border-slate-200 bg-white px-2.5 py-2 text-slate-700 hover:bg-slate-100"
+                        onClick={() => deleteRow(meta.key, row.id)}
+                        aria-label="Delete row"
+                      >
+                        <span aria-hidden="true">🗑</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col md:flex-row items-center gap-3">
                     <input
-                      type="checkbox"
-                      checked={!!row.completed}
-                      onChange={() => toggleComplete(meta.key, row.id)}
-                      className="h-5 w-5 rounded border-slate-300 accent-sky-600"
-                      aria-label="Mark goal complete"
+                      className="w-full md:flex-1 min-w-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                      value={row.identifier}
+                      onChange={(event) => updateRow(meta.key, row.id, "identifier", event.target.value)}
+                      placeholder={meta.placeholder ?? "Identifier"}
                     />
-                  </label>
+                    <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
+                      <input
+                        className="max-w-[10rem] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        maxLength={9}
+                        value={row.value}
+                        onChange={(event) => updateRow(meta.key, row.id, "value", event.target.value)}
+                        placeholder="Value"
+                      />
+                      <button
+                        className="shrink-0 rounded-2xl border border-slate-200 bg-white px-2.5 py-2 text-slate-700 hover:bg-slate-100"
+                        onClick={() => deleteRow(meta.key, row.id)}
+                        aria-label="Delete row"
+                      >
+                        <span aria-hidden="true">🗑</span>
+                      </button>
+                    </div>
+                  </div>
                 )}
-                <input
-                  className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
-                  value={row.identifier}
-                  onChange={(event) => updateRow(meta.key, row.id, "identifier", event.target.value)}
-                  placeholder={isGoalBlock ? "Goal" : meta.placeholder ?? "Identifier"}
-                />
-                <input
-                  className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none max-w-[10rem]"
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  maxLength={9}
-                  value={row.value}
-                  onChange={(event) => updateRow(meta.key, row.id, "value", event.target.value)}
-                  placeholder={isGoalBlock ? "Target" : "Value"}
-                />
-                {isGoalBlock && (
-                  <input
-                    className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none max-w-[10rem]"
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    maxLength={9}
-                    value={row.detail ?? ""}
-                    onChange={(event) => updateRow(meta.key, row.id, "detail", event.target.value)}
-                    placeholder="Status"
-                  />
-                )}
-                <button className="inline-flex items-center justify-center rounded-2xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700" onClick={() => deleteRow(meta.key, row.id)}>
-                  <span aria-hidden="true">🗑</span>
-                  <span className="sr-only">Delete row</span>
-                </button>
               </div>
             )}
           </div>
