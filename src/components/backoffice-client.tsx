@@ -285,7 +285,6 @@ export function BackofficeClient() {
             <thead className="bg-slate-50 text-slate-700">
               <tr>
                 <th className="px-4 py-3 font-semibold">User #</th>
-                <th className="px-4 py-3 font-semibold">Name</th>
                 <th className="px-4 py-3 font-semibold">Alias</th>
                 <th className="px-4 py-3 font-semibold">Created</th>
                 <th className="px-4 py-3 font-semibold">Became user</th>
@@ -301,12 +300,6 @@ export function BackofficeClient() {
               {users.map((user) => (
                 <tr key={user.id} className={user.isProtected ? "bg-sky-50/60" : ""}>
                   <td className="px-4 py-3">{user.userNumber ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    {user.name || <span className="text-slate-400">—</span>}
-                    {user.isProtected && (
-                      <span className="ml-2 rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">Admin</span>
-                    )}
-                  </td>
                   <td className="px-4 py-3">{user.alias || <span className="text-slate-400">—</span>}</td>
                   <td className="px-4 py-3">{formatDate(user.createdAt)}</td>
                   <td className="px-4 py-3">
