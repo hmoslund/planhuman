@@ -62,6 +62,8 @@ const FREE_AI_PROMPT_LIMIT = 3;
 
 const MAX_ROWS = 400;
 
+const PENSION_COLORS = [0x1d4ed8, 0x16a34a, 0xca8a04, 0xbe185d, 0x2563eb];
+
 // Render order is defined by the row groups inside DashboardClient, not by this array.
 // This is the key list plus an English fallback used only if a key is missing from block-copy.ts.
 const blockMeta = [
@@ -521,6 +523,29 @@ export function DashboardClient() {
     return projections;
   }, [retirementYear, cValue, illiquidYield, summary.cashflow, cashflowOverrides]);
 
+  // Individual pension paths from block E — each pot compounds from today's balance
+  // (year 2027) to the pension year (retirement year) at the average pension yield.
+  // No yearly savings are added per pot here: the global yearly pension savings already
+  // drive the aggregate block E line above, so adding them per pot would double-count.
+  const pensionProjections = useMemo(() => {
+    const startYear = 2027;
+    const endYear = retirementYear;
+    const years = Array.from({ length: Math.max(endYear - startYear + 1, 0) }, (_, idx) => startYear + idx);
+
+    return (blocks.E ?? [])
+      .filter((row) => Number(row.value || 0) > 0)
+      .map((row) => {
+        let runningBalance = Number(row.value || 0);
+        const series: Array<{ year: number; balance: number }> = [];
+        years.forEach((year) => {
+          const returns = runningBalance * (pensionYield / 100);
+          series.push({ year, balance: Math.round(runningBalance) });
+          runningBalance = runningBalance + returns;
+        });
+        return { id: row.id, name: row.identifier ?? String(row.id), series };
+      });
+  }, [blocks.E, pensionYield, retirementYear]);
+
   // Future value of the investment funds at the retirement start year. Mirrors the
   // AP Asset projection maths exactly — today's block C sum grown year over year at
   // the PF "Average after tax yield % for investments in block C", plus the yearly
@@ -606,7 +631,14 @@ export function DashboardClient() {
   const pensionIncomeConfigured = (blocks.E ?? []).some(isPensionPayoutConfigured);
 
 useEffect(() => {
-    const buildChart = (root: am5.Root, data: Array<{ year: number; value: number }>, color: number) => {
+    const buildChart = (
+      root: am5.Root,
+      series: Array<{
+        data: Array<{ year: number; value: number }>;
+        color: number;
+        name: string;
+      }>
+    ) => {
       root.setThemes([am5themes_Animated.new(root)]);
       const chart = root.container.children.push(
         am5xy.XYChart.new(root, {
@@ -628,39 +660,47 @@ useEffect(() => {
         })
       );
       xAxis.get("renderer").labels.template.setAll({ rotation: -30, centerY: am5.p50, centerX: am5.p0, paddingTop: 10 });
-      xAxis.data.setAll(data.map((item) => ({ year: String(item.year) })));
+
+      const allYears = series.flatMap((s) => s.data.map((d) => d.year));
+      xAxis.data.setAll([...new Set(allYears)].map((year) => ({ year: String(year) })));
 
       const yAxis = chart.yAxes.push(am5xy.ValueAxis.new(root, { renderer: am5xy.AxisRendererY.new(root, {}) }));
 
-      const series = chart.series.push(
-        am5xy.LineSeries.new(root, {
-          name: "Projection",
-          xAxis,
-          yAxis,
-          valueYField: "value",
-          categoryXField: "year",
-          tooltip: am5.Tooltip.new(root, {
-            labelText: "{name}: [bold]{valueY.formatNumber('#,###')}[/]",
-          }),
-        })
-      );
+      series.forEach(({ data, color, name }) => {
+        const lineSeries = chart.series.push(
+          am5xy.LineSeries.new(root, {
+            name,
+            xAxis,
+            yAxis,
+            valueYField: "value",
+            categoryXField: "year",
+            tooltip: am5.Tooltip.new(root, {
+              labelText: "{name}: [bold]{valueY.formatNumber('#,###')}[/]",
+            }),
+          })
+        );
 
-      series.strokes.template.setAll({ stroke: am5.color(color), strokeWidth, lineCap: "round" });
-      series.fills.template.setAll({ fill: am5.color(color), fillOpacity: 0.16 });
-      series.set("curveFactory", curveMonotoneX);
+        lineSeries.strokes.template.setAll({ stroke: am5.color(color), strokeWidth, lineCap: "round" });
+        lineSeries.fills.template.setAll({ fill: am5.color(color), fillOpacity: 0.16 });
+        lineSeries.set("curveFactory", curveMonotoneX);
 
-      series.bullets.push(() =>
-        am5.Bullet.new(root, {
-          sprite: am5.Circle.new(root, {
-            radius: 6,
-            fill: am5.color(0xffffff),
-            stroke: am5.color(color),
-            strokeWidth: 2,
-          }),
-        })
-      );
+        lineSeries.bullets.push(() =>
+          am5.Bullet.new(root, {
+            sprite: am5.Circle.new(root, {
+              radius: 6,
+              fill: am5.color(0xffffff),
+              stroke: am5.color(color),
+              strokeWidth: 2,
+            }),
+          })
+        );
 
-      series.data.setAll(data.map((item) => ({ year: String(item.year), value: item.value })));
+        lineSeries.data.setAll(data.map((item) => ({ year: String(item.year), value: item.value })));
+      });
+
+      if (series.length > 1) {
+        chart.children.push(am5.Legend.new(root, {}));
+      }
 
       const cursor = chart.set("cursor", am5xy.XYCursor.new(root, { xAxis, yAxis, behavior: "none" }));
       cursor.lineY.set("visible", false);
@@ -674,19 +714,47 @@ useEffect(() => {
 
     if (retirementChartRef.current) {
       const root = am5.Root.new(retirementChartRef.current);
-      buildChart(root, retirementProjections.map((projection) => ({ year: projection.year, value: projection.balance })), 0x1d4ed8);
+      const retirementSeries: Array<{
+        data: Array<{ year: number; value: number }>;
+        color: number;
+        name: string;
+      }> = [
+        {
+          data: retirementProjections.map((projection) => ({
+            year: projection.year,
+            value: projection.balance,
+          })),
+          color: 0x1d4ed8,
+          name: "All pensions (block E)",
+        },
+        ...pensionProjections.map((pension, index) => ({
+          data: pension.series.map((s) => ({ year: s.year, value: s.balance })),
+          color: PENSION_COLORS[index % PENSION_COLORS.length],
+          name: pension.name,
+        })),
+      ];
+      buildChart(root, retirementSeries);
       roots.push(root);
     }
     if (assetChartRef.current) {
       const root = am5.Root.new(assetChartRef.current);
-      buildChart(root, assetProjections.map((projection) => ({ year: projection.year, value: projection.balance })), 0x8b5cf6);
+      buildChart(root, [
+        {
+          data: assetProjections.map((projection) => ({
+            year: projection.year,
+            value: projection.balance,
+          })),
+          color: 0x8b5cf6,
+          name: "Assets & investments (block C)",
+        },
+      ]);
       roots.push(root);
     }
 
     return () => {
       roots.forEach((root) => root.dispose());
     };
-  }, [retirementProjections, assetProjections, smoothingHorizontal, smoothingVertical, strokeWidth]);
+  }, [retirementProjections, assetProjections, pensionProjections, smoothingHorizontal, smoothingVertical, strokeWidth]);
 
   // Retirement income vs. spending — built from the funding overview, so this chart and
   // the "FR Funding after retirement" table can never disagree: one stacked segment per
@@ -943,7 +1011,7 @@ useEffect(() => {
         ? (blocks.G ?? [])
             .map((goal) => {
               const completed = goal.completed ? " [COMPLETED]" : "";
-              return `  - ${goal.identifier || "Untitled goal"} (Target: ${sym}${goal.value || 0} | Status: ${goal.detail || "in progress"})${completed}`;
+              return `  - ${goal.identifier || "Untitled goal"} (Goal: ${sym}${goal.value || 0} | Status: ${goal.detail || "in progress"})${completed}`;
             })
             .join("\n")
         : "  - No goals defined yet.";
@@ -2255,6 +2323,7 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                       />
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
+                      <span className="shrink-0 text-xs font-medium text-slate-500">Goal</span>
                       <input
                         className="max-w-[10rem] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
                         type="text"
@@ -2265,6 +2334,7 @@ function BlockCard({ meta, blocks, updateRow, addRow, deleteRow, toggleComplete,
                         onChange={(event) => updateRow(meta.key, row.id, "value", event.target.value)}
                         placeholder="Target"
                       />
+                      <span className="shrink-0 text-xs font-medium text-slate-500">Status</span>
                       <input
                         className="max-w-[10rem] shrink-0 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
                         type="text"

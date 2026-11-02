@@ -81,6 +81,21 @@ export function normalizeAlias(alias: string) {
   return String(alias).trim().toLowerCase();
 }
 
+// The protected test user hmoslundoutlookcom must always stay a donor/premium user
+// so they can test every feature. This is a runtime guard only — no database
+// column or migration is touched, and no other user is affected.
+export function isProtectedUser(user: Pick<AppUser, "email" | "alias">) {
+  return (
+    (Boolean(user.email) && isAdminEmail(user.email!)) ||
+    (Boolean(user.alias) && isAdminAlias(user.alias!))
+  );
+}
+
+export function protectUser(user: AppUser): AppUser {
+  if (!isProtectedUser(user)) return user;
+  return { ...user, donated: true, type: "Donor" };
+}
+
 const RECOVERY_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 
 // Generates a human-typeable, one-time recovery code. Only its hash is ever stored.
@@ -176,7 +191,7 @@ export async function getUserFromRequest(request: Request) {
     return null;
   }
 
-  return session.user as AppUser;
+  return protectUser(session.user as AppUser);
 }
 
 export async function getCurrentUserFromCookies() {
@@ -194,7 +209,7 @@ export async function getCurrentUserFromCookies() {
     return null;
   }
 
-  return session.user as AppUser;
+  return protectUser(session.user as AppUser);
 }
 
 export async function clearSessionCookie() {

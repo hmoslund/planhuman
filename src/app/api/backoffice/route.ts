@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
-import { calculateWealth, getUserFromRequest, isAdminAlias, isAdminEmail } from "@/lib/auth";
+import {
+  calculateWealth,
+  getUserFromRequest,
+  isAdminAlias,
+  isAdminEmail,
+  isProtectedUser,
+  protectUser,
+} from "@/lib/auth";
 import { isPremiumUser } from "@/lib/premium";
 import prisma from "@/lib/prisma";
 
@@ -20,6 +27,7 @@ export async function GET(request: Request) {
     });
 
     const payload = users.map((entry) => {
+      const protectedEntry = protectUser(entry);
       const record = entry.wealthRecords[0];
       const blocks = (record?.blocks as Record<string, Array<{ value?: number | null }>>) ?? {};
 
@@ -32,11 +40,11 @@ export async function GET(request: Request) {
         userNumber: entry.userNumber,
         createdAt: entry.createdAt,
         isProtected: isProtectedAdmin(entry),
-        userType: entry.donated ? "Donor" : "Free",
-        donated: entry.donated,
+        userType: protectedEntry.donated ? "Donor" : "Free",
+        donated: protectedEntry.donated,
         donatedAt: entry.donatedAt,
-        type: entry.type,
-        isPremium: isPremiumUser(entry),
+        type: protectedEntry.type,
+        isPremium: isPremiumUser(protectedEntry),
         becameUserDate: entry.becameUserDate,
         rowCount: Object.values(blocks).reduce((count, rows) => count + (rows?.length ?? 0), 0),
         summary: calculateWealth(blocks),
@@ -69,10 +77,19 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const data: { donated?: boolean; donatedAt?: Date | null } = {};
+    const data: { donated?: boolean; donatedAt?: Date | null; type?: string | null } = {};
     if (typeof body.donated === "boolean") {
       data.donated = body.donated;
       data.donatedAt = body.donated ? new Date() : null;
+    }
+
+    // The protected test user hmoslundoutlookcom must always stay donated + Donor
+    // (premium), so they can test every feature. Never let the backoffice switch
+    // this off.
+    if (isProtectedUser(target)) {
+      data.donated = true;
+      data.donatedAt = new Date();
+      data.type = "Donor";
     }
 
     const updated = await prisma.user.update({ where: { id: userId }, data });
