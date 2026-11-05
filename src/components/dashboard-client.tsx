@@ -176,6 +176,7 @@ export function DashboardClient() {
   const [countryFacts, setCountryFacts] = useState<CountryFacts | null>(null);
   const [showWealthPlanner, setShowWealthPlanner] = useState(true);
   const [showPensionPlanner, setShowPensionPlanner] = useState(true);
+  const [showFRTable, setShowFRTable] = useState(false);
   const [birthYear, setBirthYear] = useState(1980);
   const [retirementAge, setRetirementAge] = useState(67);
   const [pensionYield, setPensionYield] = useState(5);
@@ -202,6 +203,7 @@ export function DashboardClient() {
   const [strokeWidth, setStrokeWidth] = useState(3);
   const [sponsors, setSponsors] = useState<Record<string, { link: string; logoData: string | null; text: string | null }>>({});
   const retirementChartRef = useRef<HTMLDivElement | null>(null);
+  const retirementLegendRef = useRef<HTMLDivElement | null>(null);
   const assetChartRef = useRef<HTMLDivElement | null>(null);
   const incomeChartRef = useRef<HTMLDivElement | null>(null);
   const incomeLegendRef = useRef<HTMLDivElement | null>(null);
@@ -733,7 +735,36 @@ useEffect(() => {
           name: pension.name,
         })),
       ];
+      // Additional pension contribution (PUR) — cumulative PUR savings compounded at pension yield.
+      if (yearlyPensionSavings > 0) {
+        let addPensionBalance = 0;
+        const addPensionSeries: Array<{ year: number; value: number }> = [];
+        for (let year = 2027; year <= retirementYear; year++) {
+          addPensionBalance = addPensionBalance * (1 + pensionYield / 100) + yearlyPensionSavings;
+          addPensionSeries.push({ year, value: Math.round(addPensionBalance) });
+        }
+        retirementSeries.push({
+          data: addPensionSeries,
+          color: 0xbe185d,
+          name: "Additional pension contribution",
+        });
+      }
       buildChart(root, retirementSeries);
+      if (retirementLegendRef.current) {
+        const legendEl = retirementLegendRef.current;
+        legendEl.replaceChildren();
+        retirementSeries.forEach((series) => {
+          const wrap = document.createElement("span");
+          wrap.className = "inline-flex items-center gap-1.5 text-xs text-slate-600";
+          const dot = document.createElement("span");
+          dot.className = "inline-block h-2.5 w-2.5 shrink-0 rounded-full";
+          dot.style.backgroundColor = `#${series.color.toString(16).padStart(6, "0")}`;
+          const label = document.createElement("span");
+          label.textContent = series.name;
+          wrap.append(dot, label);
+          legendEl.append(wrap);
+        });
+      }
       roots.push(root);
     }
     if (assetChartRef.current) {
@@ -754,7 +785,7 @@ useEffect(() => {
     return () => {
       roots.forEach((root) => root.dispose());
     };
-  }, [retirementProjections, assetProjections, pensionProjections, smoothingHorizontal, smoothingVertical, strokeWidth]);
+  }, [retirementProjections, assetProjections, pensionProjections, smoothingHorizontal, smoothingVertical, strokeWidth, showWealthPlanner, showPensionPlanner]);
 
   // Retirement income vs. spending — built from the funding overview, so this chart and
   // the "FR Funding after retirement" table can never disagree: one stacked segment per
@@ -1532,8 +1563,6 @@ Begin your response with Section 1.
               ))}
             </div>
 
-            {/* Start here — income and outgoings drive every chart on the page. */}
-            <p className="mt-2 text-sm font-semibold uppercase tracking-wide text-slate-500">{guide.sectionStart}</p>
             <div className="grid gap-4 xl:grid-cols-2">
               {rowStart.map((meta) => (
                 <BlockCard key={meta.key} meta={meta} blocks={blocks} updateRow={updateRow} addRow={addRow} deleteRow={deleteRow} toggleComplete={toggleComplete} currency={currency} showGuide={showGuide} isPremium={isPremiumUser(user)} />
@@ -1619,6 +1648,7 @@ Begin your response with Section 1.
               </div>
               <div className="mt-5">
                 <div ref={retirementChartRef} className="h-[320px]" />
+                <div ref={retirementLegendRef} className="mt-3 flex flex-wrap gap-x-4 gap-y-2" />
               </div>
             </div>
             )}
