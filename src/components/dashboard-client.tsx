@@ -205,6 +205,7 @@ export function DashboardClient() {
   const retirementChartRef = useRef<HTMLDivElement | null>(null);
   const retirementLegendRef = useRef<HTMLDivElement | null>(null);
   const assetChartRef = useRef<HTMLDivElement | null>(null);
+  const assetLegendRef = useRef<HTMLDivElement | null>(null);
   const incomeChartRef = useRef<HTMLDivElement | null>(null);
   const incomeLegendRef = useRef<HTMLDivElement | null>(null);
 
@@ -720,14 +721,6 @@ useEffect(() => {
         color: number;
         name: string;
       }> = [
-        {
-          data: retirementProjections.map((projection) => ({
-            year: projection.year,
-            value: projection.balance,
-          })),
-          color: 0x1d4ed8,
-          name: "All pensions (block E)",
-        },
         ...pensionProjections.map((pension, index) => ({
           data: pension.series.map((s) => ({ year: s.year, value: s.balance })),
           color: PENSION_COLORS[index % PENSION_COLORS.length],
@@ -856,7 +849,11 @@ useEffect(() => {
     }
     if (assetChartRef.current) {
       const root = am5.Root.new(assetChartRef.current);
-      buildChart(root, [
+      const assetSeries: Array<{
+        data: Array<{ year: number; value: number }>;
+        color: number;
+        name: string;
+      }> = [
         {
           data: assetProjections.map((projection) => ({
             year: projection.year,
@@ -865,7 +862,110 @@ useEffect(() => {
           color: 0x8b5cf6,
           name: "Assets & investments (block C)",
         },
-      ]);
+      ];
+      root.setThemes([am5themes_Animated.new(root)]);
+
+      const chart = root.container.children.push(
+        am5xy.XYChart.new(root, {
+          panX: true,
+          panY: true,
+          wheelX: "panX",
+          wheelY: "zoomX",
+          pinchZoomX: true,
+        })
+      );
+
+      chart.set("scrollbarX", am5.Scrollbar.new(root, { orientation: "horizontal" }));
+
+      const xRenderer = am5xy.AxisRendererX.new(root, { minGridDistance: 20 });
+      const xAxis = chart.xAxes.push(
+        am5xy.CategoryAxis.new(root, {
+          categoryField: "year",
+          renderer: xRenderer,
+        })
+      );
+      xAxis.get("renderer").labels.template.setAll({
+        rotation: -30,
+        centerY: am5.p50,
+        centerX: am5.p0,
+        paddingTop: 10,
+      });
+
+      const allYears = assetSeries.flatMap((s) => s.data.map((d) => d.year));
+      xAxis.data.setAll(
+        [...new Set(allYears.map((year) => String(year)))].map((year) => ({ year }))
+      );
+
+      const yAxis = chart.yAxes.push(
+        am5xy.ValueAxis.new(root, { renderer: am5xy.AxisRendererY.new(root, {}) })
+      );
+
+      assetSeries.forEach(({ data, color, name }) => {
+        const lineSeries = chart.series.push(
+          am5xy.LineSeries.new(root, {
+            name,
+            xAxis,
+            yAxis,
+            valueYField: "value",
+            categoryXField: "year",
+            stacked: true,
+            tooltip: am5.Tooltip.new(root, {
+              labelText: "{name}: [bold]{valueY.formatNumber('#,###')}[/]",
+            }),
+          })
+        );
+
+        lineSeries.strokes.template.setAll({
+          stroke: am5.color(color),
+          strokeWidth,
+          lineCap: "round",
+          visible: true,
+        });
+        lineSeries.fills.template.setAll({
+          fill: am5.color(color),
+          fillOpacity: 0.5,
+          visible: true,
+        });
+        lineSeries.set("curveFactory", curveMonotoneX);
+        lineSeries.set("fill", am5.color(color));
+
+        lineSeries.bullets.push(() =>
+          am5.Bullet.new(root, {
+            sprite: am5.Circle.new(root, {
+              radius: 6,
+              fill: am5.color(0xffffff),
+              stroke: am5.color(color),
+              strokeWidth: 2,
+            }),
+          })
+        );
+
+        lineSeries.data.setAll(
+          data.map((item) => ({ year: String(item.year), value: item.value }))
+        );
+      });
+
+      if (assetLegendRef.current) {
+        const legendEl = assetLegendRef.current;
+        legendEl.replaceChildren();
+        assetSeries.forEach((series) => {
+          const wrap = document.createElement("span");
+          wrap.className = "inline-flex items-center gap-1.5 text-xs text-slate-600";
+          const dot = document.createElement("span");
+          dot.className = "inline-block h-2.5 w-2.5 shrink-0 rounded-full";
+          dot.style.backgroundColor = `#${series.color.toString(16).padStart(6, "0")}`;
+          const label = document.createElement("span");
+          label.textContent = series.name;
+          wrap.append(dot, label);
+          legendEl.append(wrap);
+        });
+      }
+
+      const cursor = chart.set("cursor", am5xy.XYCursor.new(root, { xAxis, yAxis, behavior: "none" }));
+      cursor.lineY.set("visible", false);
+      cursor.lineX.setAll({ strokeOpacity: 0.4, stroke: am5.color(0x94a3b8) });
+
+      chart.appear(1000, 100);
       roots.push(root);
     }
 
@@ -1717,6 +1817,7 @@ Begin your response with Section 1.
               </div>
               <div className="mt-5">
                 <div ref={assetChartRef} className="h-[320px]" />
+                <div ref={assetLegendRef} className="mt-3 flex flex-wrap gap-x-4 gap-y-2" />
                 <p className="mt-3 text-xs text-slate-500 leading-5">
                   {sec("ALO").description}
                 </p>
