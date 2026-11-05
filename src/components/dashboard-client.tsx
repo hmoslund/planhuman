@@ -715,7 +715,6 @@ useEffect(() => {
     const roots: am5.Root[] = [];
 
     if (retirementChartRef.current) {
-      const root = am5.Root.new(retirementChartRef.current);
       const retirementSeries: Array<{
         data: Array<{ year: number; value: number }>;
         color: number;
@@ -749,7 +748,89 @@ useEffect(() => {
           name: "Additional pension contribution",
         });
       }
-      buildChart(root, retirementSeries);
+      const root = am5.Root.new(retirementChartRef.current);
+      root.setThemes([am5themes_Animated.new(root)]);
+
+      const chart = root.container.children.push(
+        am5xy.XYChart.new(root, {
+          panX: true,
+          panY: true,
+          wheelX: "panX",
+          wheelY: "zoomX",
+          pinchZoomX: true,
+        })
+      );
+
+      chart.set("scrollbarX", am5.Scrollbar.new(root, { orientation: "horizontal" }));
+
+      const xRenderer = am5xy.AxisRendererX.new(root, { minGridDistance: 20 });
+      const xAxis = chart.xAxes.push(
+        am5xy.CategoryAxis.new(root, {
+          categoryField: "year",
+          renderer: xRenderer,
+        })
+      );
+      xAxis.get("renderer").labels.template.setAll({
+        rotation: -30,
+        centerY: am5.p50,
+        centerX: am5.p0,
+        paddingTop: 10,
+      });
+
+      const allYears = retirementSeries.flatMap((s) => s.data.map((d) => d.year));
+      xAxis.data.setAll(
+        [...new Set(allYears.map((year) => String(year)))].map((year) => ({ year }))
+      );
+
+      const yAxis = chart.yAxes.push(
+        am5xy.ValueAxis.new(root, { renderer: am5xy.AxisRendererY.new(root, {}) })
+      );
+
+      retirementSeries.forEach(({ data, color, name }) => {
+        const lineSeries = chart.series.push(
+          am5xy.LineSeries.new(root, {
+            name,
+            xAxis,
+            yAxis,
+            valueYField: "value",
+            categoryXField: "year",
+            stacked: true,
+            tooltip: am5.Tooltip.new(root, {
+              labelText: "{name}: [bold]{valueY.formatNumber('#,###')}[/]",
+            }),
+          })
+        );
+
+        // Filled, smoothed, stacked line series.
+        lineSeries.strokes.template.setAll({
+          stroke: am5.color(color),
+          strokeWidth,
+          lineCap: "round",
+          visible: true,
+        });
+        lineSeries.fills.template.setAll({
+          fill: am5.color(color),
+          fillOpacity: 0.5,
+          visible: true,
+        });
+        lineSeries.set("curveFactory", curveMonotoneX);
+
+        lineSeries.bullets.push(() =>
+          am5.Bullet.new(root, {
+            sprite: am5.Circle.new(root, {
+              radius: 6,
+              fill: am5.color(0xffffff),
+              stroke: am5.color(color),
+              strokeWidth: 2,
+            }),
+          })
+        );
+
+        lineSeries.data.setAll(
+          data.map((item) => ({ year: String(item.year), value: item.value }))
+        );
+      });
+
       if (retirementLegendRef.current) {
         const legendEl = retirementLegendRef.current;
         legendEl.replaceChildren();
@@ -765,6 +846,12 @@ useEffect(() => {
           legendEl.append(wrap);
         });
       }
+
+      const cursor = chart.set("cursor", am5xy.XYCursor.new(root, { xAxis, yAxis, behavior: "none" }));
+      cursor.lineY.set("visible", false);
+      cursor.lineX.setAll({ strokeOpacity: 0.4, stroke: am5.color(0x94a3b8) });
+
+      chart.appear(1000, 100);
       roots.push(root);
     }
     if (assetChartRef.current) {
