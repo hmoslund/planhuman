@@ -210,7 +210,7 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
             A calm, human-first space for personal wealth planning.
           </h1>
           <p className="mt-4 max-w-xl text-lg leading-8 text-slate-600">
-            Track your assets, debts, income, goals, and cashflow in one calm dashboard built for everyday people rather than finance professionals.
+            Track your assets, debts, income, goals and pensions in one calm dashboard built for everyday people rather than finance professionals.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {[
@@ -232,8 +232,13 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
               className="w-full rounded-2xl border border-slate-200 shadow-sm"
             />
             <img
-              src="/sampleoverview.png"
+              src="/overview2.png"
               alt="Sample of the wealth overview dashboard in PlanHumans"
+              className="w-full rounded-2xl border border-slate-200 shadow-sm"
+            />
+            <img
+              src="/pension.png"
+              alt="Plan and simulate our retirement"
               className="w-full rounded-2xl border border-slate-200 shadow-sm"
             />
           </div>
