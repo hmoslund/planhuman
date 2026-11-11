@@ -239,6 +239,7 @@ export function DashboardClient() {
       if (typeof s.strokeWidth === "number") setStrokeWidth(s.strokeWidth);
       if (typeof s.showWealthPlanner === "boolean") setShowWealthPlanner(s.showWealthPlanner);
       if (typeof s.showPensionPlanner === "boolean") setShowPensionPlanner(s.showPensionPlanner);
+      if (typeof s.showFRTable === "boolean") setShowFRTable(s.showFRTable);
       if (s.pensionSavingsOverrides && typeof s.pensionSavingsOverrides === "object") {
         setPensionSavingsOverrides(s.pensionSavingsOverrides);
       }
@@ -283,6 +284,7 @@ export function DashboardClient() {
         additionalPensionYears,
         showWealthPlanner,
         showPensionPlanner,
+        showFRTable,
         pensionSavingsOverrides,
         cashflowOverrides,
       }),
@@ -301,6 +303,7 @@ export function DashboardClient() {
       additionalPensionYears,
       showWealthPlanner,
       showPensionPlanner,
+      showFRTable,
       pensionSavingsOverrides,
       cashflowOverrides,
     ]
@@ -1858,6 +1861,12 @@ Begin your response with Section 1.
                 >
                   Pension Planner
                 </button>
+                <button
+                  className={`rounded-full px-4 py-2 text-sm font-medium ${showFRTable ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
+                  onClick={() => setShowFRTable((value) => !value)}
+                >
+                  FR table
+                </button>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <label className="rounded-2xl border border-slate-200 p-3 text-sm text-slate-700">
@@ -2176,7 +2185,7 @@ Begin your response with Section 1.
               )}
             </div>
 
-            {showPensionPlanner && fundingOverview.rows.length > 0 && (
+            {showPensionPlanner && showFRTable && fundingOverview.rows.length > 0 && (
               <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-4">
                   <div>

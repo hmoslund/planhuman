@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { COUNTRY_CODES, CURRENCIES } from "@/lib/wealth";
-import { isPremiumUser } from "@/lib/premium";
-
 const MAX_LOGO_BYTES = 500 * 1024;
 
 type SponsorDraft = { link: string; text: string; logoData: string | null };
@@ -47,6 +45,7 @@ type UserRow = {
   emailVerified: boolean;
   userNumber: number | null;
   createdAt: string;
+  updatedAt: string;
   isProtected: boolean;
   userType: string;
   donated: boolean;
@@ -57,6 +56,15 @@ type UserRow = {
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+// Renders as DD.MM.YYYY (locale-independent separators).
+function formatDateDMY(value: string) {
+  const d = new Date(value);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}.${month}.${year}`;
 }
 
 // Renders as plain YYYY-MM-DD (not localized) since this also doubles as the value
@@ -287,12 +295,11 @@ export function BackofficeClient() {
                 <th className="px-4 py-3 font-semibold">User #</th>
                 <th className="px-4 py-3 font-semibold">Alias</th>
                 <th className="px-4 py-3 font-semibold">Created</th>
+                <th className="px-4 py-3 font-semibold">Updated</th>
                 <th className="px-4 py-3 font-semibold">Became user</th>
                 <th className="px-4 py-3 font-semibold">Type</th>
                 <th className="px-4 py-3 font-semibold">Donated</th>
-                <th className="px-4 py-3 font-semibold">Premium</th>
                 <th className="px-4 py-3 font-semibold">Rows</th>
-                <th className="px-4 py-3 font-semibold">Verified</th>
                 <th className="px-4 py-3 font-semibold">Action</th>
               </tr>
             </thead>
@@ -302,6 +309,7 @@ export function BackofficeClient() {
                   <td className="px-4 py-3">{user.userNumber ?? "—"}</td>
                   <td className="px-4 py-3">{user.alias || <span className="text-slate-400">—</span>}</td>
                   <td className="px-4 py-3">{formatDate(user.createdAt)}</td>
+                  <td className="px-4 py-3">{formatDateDMY(user.updatedAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <input
@@ -337,15 +345,9 @@ export function BackofficeClient() {
                     </button>
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${isPremiumUser(user) ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-600"}`}>
-                      {isPremiumUser(user) ? "Yes" : "No"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
                     {user.rowCount}
                     <span className="text-slate-400"> / {MAX_ROWS}</span>
                   </td>
-                  <td className="px-4 py-3">{user.emailVerified ? "Yes" : "No"}</td>
                   <td className="px-4 py-3">
                     {user.isProtected ? (
                       <span className="text-xs text-slate-400">Protected</span>
