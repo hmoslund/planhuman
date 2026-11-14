@@ -1865,7 +1865,7 @@ Begin your response with Section 1.
                   className={`rounded-full px-4 py-2 text-sm font-medium ${showFRTable ? "bg-slate-900 text-white" : "border border-slate-300 text-slate-700"}`}
                   onClick={() => setShowFRTable((value) => !value)}
                 >
-                  FR table
+                  Detail tabel
                 </button>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -2067,7 +2067,7 @@ Begin your response with Section 1.
             )}
 
             <div className={`grid gap-4 ${showWealthPlanner && showPensionPlanner ? "xl:grid-cols-2" : ""}`}>
-              {showPensionPlanner && (
+              {showPensionPlanner && showFRTable && (
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
@@ -2127,7 +2127,7 @@ Begin your response with Section 1.
                 </div>
               )}
 
-              {showWealthPlanner && (
+              {showWealthPlanner && showFRTable && (
                 <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>

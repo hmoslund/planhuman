@@ -290,8 +290,8 @@ export function HomeClient({ formToken, turnstileSiteKey }: Props) {
               <h2 className="text-base font-semibold text-slate-900">Have a great idea for the app?</h2>
               <p className="mt-2 text-sm leading-7 text-slate-600">
                 If you&apos;ve supported us with a coffee, we&apos;d love to hear your thoughts! Drop us an email anytime at{" "}
-                <a href="mailto:people@planhuman.com" className="font-medium text-slate-900 underline">
-                  people@planhuman.com
+                <a href="mailto:people@planhumans.com" className="font-medium text-slate-900 underline">
+                  people@planhumans.com
                 </a>
                 .
               </p>
