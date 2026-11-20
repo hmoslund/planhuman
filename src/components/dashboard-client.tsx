@@ -2053,6 +2053,22 @@ Begin your response with Section 1.
               </div>
             )}
           </div>
+
+          {showGuide && (
+            <div className="mt-6 rounded-[24px] border border-amber-200 bg-amber-50 p-6 shadow-sm">
+              <p className="text-sm font-medium text-amber-700">{guide.calcHeading}</p>
+              <div className="mt-3 space-y-4 text-sm leading-7 text-slate-700">
+                <p className="font-semibold text-slate-900">{guide.calcBlockC}</p>
+                <p className="font-semibold text-slate-900">{guide.calcBlockE}</p>
+                <p className="font-semibold text-slate-900">{guide.calcTax}</p>
+                <p className="font-semibold text-slate-900">{guide.calcFitsTogether}</p>
+              </div>
+              <p className="mt-4 border-t border-amber-200 pt-3 text-xs leading-5 text-amber-500">
+                PlanHumans is a planning tool, not financial advice. Forecasts are simple projections based on
+                the assumptions you set — they are not a prediction of what will happen.
+              </p>
+            </div>
+          )}
         </section>
       </div>
     </main>
